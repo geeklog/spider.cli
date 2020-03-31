@@ -177,8 +177,6 @@ async function fetch(url, cfg) {
     ? path.join(cfg.cache, base64(url))
     : path.join(os.tmpdir(), base64(url));
 
-  console.log('cachePath', cachePath);
-  
   if (!fs.existsSync(cachePath)) {
     const content = (await axios.get(url)).data;
     fs.writeFileSync(cachePath, content);
