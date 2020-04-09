@@ -14,7 +14,9 @@ const {uniq, isArray, isString, flatten} = require('lodash');
 const {mapLimit} = require('promise-async');
 const pretty = require('pretty');
 const cheerio = require('cheerio');
+const crypto = require('crypto');
 const entities = new (require('html-entities').XmlEntities)();
+const stdin = require('./stdin');
 
 const dir = s => path.join(__dirname, s);
 
@@ -27,11 +29,13 @@ cmdr.option('-c, --cache [cachePath]',
   'use cache, if a cache path is specified, use that, ' +
   'other wise, use a path of (os tmp path + base64(url)); '
 );
-cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not specified', 86400);
+cmdr.option('-t --expire [expireTime]', 'default expire time is 1day, if not specified', 86400);
 cmdr.option('-u, --unique', 'unique');
 cmdr.option('-a, --asc', 'sort asc');
 cmdr.option('-d, --dasc', 'sort dasc');
-cmdr.option('-E, --unescape', 'decode html entities');
+cmdr.option('-v, --verbose', 'show verbose get message');
+cmdr.option('-w, --warn', 'ignore fetch error, just show as warning');
+cmdr.option('-D, --decode-entities', 'decode html entities');
 cmdr.option('-H, --html', 'output as html');
 cmdr.option('-p, --parallel <n>',
   'jobs run sequentially at default, use this ' +
@@ -44,10 +48,15 @@ cmdr.command('expands <url>').alias('e')
     expandUrlList(url).map(u => console.log(u));
   });
 
-cmdr.command('links <url>').alias('l')
+cmdr.command('links [url]').alias('l')
   .description('Extract links from webpage')
   .action(async url => {
-    const urls = expandUrlList(url);
+    let urls;
+    if (!url) {
+      urls = flatten((await stdin()).split('\n').map(expandUrlList));
+    } else {
+      urls = expandUrlList(url);
+    }
 
     let links = await runsWithOptions(urls, {flatten: true},
       async (url) => {
@@ -191,7 +200,7 @@ function parseHtmlWithOption(html, pattern) {
   }
   for (const el of $(selector).toArray().map($)) {
     const res = format(formatter, {
-      '@(.+)': (_, s) => el.attr(s),
+      '@(.+)': (_, s) => unescapeOrNot(el.attr(s)),
       '<html/>': () => unescapeOrNot($.html(el)),
       '<text/>': () => unescapeOrNot(el.text())
     });
@@ -213,36 +222,67 @@ async function fetchWithOptions(url) {
 
 async function fetch(url, cfg) {
   const isURL = s => s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:');
-  const base64 = s => Buffer.from(s).toString('base64');
 
   if (!isURL(url)) {
+    if (!fs.pathExistsSync(url)) {
+      return '';
+    }
     return fs.readFileSync(url).toString();
   }
   
   if (!cfg.cache) {
-    return (await axios.get(url)).data;
+    return await axiosGetWithOptions(url);
   }
 
   const cachePath = isString(cfg.cache)
-    ? path.join(cfg.cache, base64(url))
-    : path.join(os.tmpdir(), base64(url));
+    ? path.join(cfg.cache, shortenURL(url))
+    : path.join(os.tmpdir(), shortenURL(url));
 
-  if (!fs.existsSync(cachePath)) {
-    const content = (await axios.get(url)).data;
-    fs.writeFileSync(cachePath, content);
+  if (!fs.pathExistsSync(cachePath)) {
+    const content = await axiosGetWithOptions(url);
+    if (content) {
+      fs.ensureFileSync(cachePath);
+      fs.writeFileSync(cachePath, content);
+    } else {
+      return '';
+    }
   }
 
   const now = new Date().getTime();
   const fileCreatedAt = fs.statSync(cachePath).mtime.getTime();
   
   if (now - fileCreatedAt > cfg.expire * 1000) {
-    const content = (await axios.get(url)).data;
-    fs.writeFileSync(cachePath, content);
+    const content = await axiosGetWithOptions(url);
+    if (content) {
+      fs.ensureFileSync(cachePath);
+      fs.writeFileSync(cachePath, content);
+    }
     return content;
   } else {
     return fs.readFileSync(cachePath).toString();
   }
+}
 
+async function axiosGetWithOptions(url) {
+  if (cmdr.verbose) {
+    console.log('Get', url);
+  }
+  if (cmdr.warn) {
+    try {
+      return (await axios.get(url)).data;
+    } catch (error) {
+      console.error('Fetch error:', error.message, url);
+      return null;
+    }
+  } else {
+    return (await axios.get(url)).data;
+  }
+}
+
+function shortenURL(s) {
+  s = crypto.createHash('md5').update(s).digest('hex');
+  // s = Buffer.from(s).toString('base64');
+  return s;
 }
 
 process.on('unhandledRejection', e => console.error(e))
