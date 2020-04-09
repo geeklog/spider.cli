@@ -225,10 +225,10 @@ async function fetch(url, cfg) {
   const isURL = s => s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:');
 
   if (!isURL(url)) {
-    if (!fs.pathExistsSync(url)) {
+    if (!await fs.pathExists(url)) {
       return '';
     }
-    return fs.readFileSync(url).toString();
+    return (await fs.readFile(url)).toString();
   }
   
   if (!cfg.cache) {
@@ -239,28 +239,28 @@ async function fetch(url, cfg) {
     ? path.join(cfg.cache, shortenURL(url))
     : path.join(os.tmpdir(), shortenURL(url));
 
-  if (!fs.pathExistsSync(cachePath)) {
+  if (!await fs.pathExists(cachePath)) {
     const content = await axiosGetWithOptions(url);
     if (content) {
-      fs.ensureFileSync(cachePath);
-      fs.writeFileSync(cachePath, content);
+      await fs.ensureFile(cachePath);
+      await fs.writeFile(cachePath, content);
     } else {
       return '';
     }
   }
 
   const now = new Date().getTime();
-  const fileCreatedAt = fs.statSync(cachePath).mtime.getTime();
+  const fileCreatedAt = (await fs.stat(cachePath)).mtime.getTime();
   
   if (now - fileCreatedAt > cfg.expire * 1000) {
     const content = await axiosGetWithOptions(url);
     if (content) {
-      fs.ensureFileSync(cachePath);
-      fs.writeFileSync(cachePath, content);
+      await fs.ensureFile(cachePath);
+      await fs.writeFile(cachePath, content);
     }
     return content;
   } else {
-    return fs.readFileSync(cachePath).toString();
+    return (await fs.readFile(cachePath)).toString();
   }
 }
 
@@ -282,7 +282,6 @@ async function axiosGetWithOptions(url) {
 
 function shortenURL(s) {
   s = crypto.createHash('md5').update(s).digest('hex');
-  // s = Buffer.from(s).toString('base64');
   return s;
 }
 
