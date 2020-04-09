@@ -13,6 +13,9 @@ const os = require('os');
 const {uniq, isArray, isString, flatten} = require('lodash');
 const {mapLimit} = require('promise-async');
 const pretty = require('pretty');
+const cheerio = require('cheerio');
+const entities = new (require('html-entities').XmlEntities)();
+
 const dir = s => path.join(__dirname, s);
 
 const REGEX_HTTP_URL = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
@@ -28,6 +31,7 @@ cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not spe
 cmdr.option('-u, --unique', 'unique');
 cmdr.option('-a, --asc', 'sort asc');
 cmdr.option('-d, --dasc', 'sort dasc');
+cmdr.option('-E, --unescape', 'decode html entities');
 cmdr.option('-H, --html', 'output as html');
 cmdr.option('-p, --parallel <n>',
   'jobs run sequentially at default, use this ' +
@@ -89,6 +93,19 @@ cmdr.command('images <url>').alias('img')
       imgs.map(u => console.log(u));
     }
   })
+
+cmdr.command('extract <url> <pattern>').alias('ext')
+  .description('Extract html page base on the selector pattern')
+  .action(async (url, pattern) => {
+    const urls = expandUrlList(url);
+    const htmls = await runsWithOptions(urls, {flatten: true}, fetchWithOptions);
+    for (let html of htmls) {
+      const results = parseHtmlWithOption(html, pattern);
+      for (const r of results) {
+        console.log(r);
+      }
+    }
+  });
 
 cmdr.parse(process.argv);
 
@@ -155,6 +172,39 @@ async function runsWithOptions(list, opt, runner) {
     results = flatten(results);
   }
   return results;
+}
+
+/**
+ * spider extract https://www.cnbeta.com/ '.items-area .item dl > dt > a => <text/> | @href' -cE
+ * spider extract https://www.cnbeta.com/ '.items-area .item dl > dt > a'
+ *   the same as <html/>
+ * @param {*} html 
+ * @param {*} pattern 
+ */
+function parseHtmlWithOption(html, pattern) {
+  const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
+  let [selector, formatter] = pattern.split('=>').map(s => s.trim());
+  const $ = cheerio.load(html);
+  const results = [];
+  if (!formatter) {
+    formatter = '<html/>';
+  }
+  for (const el of $(selector).toArray().map($)) {
+    const res = format(formatter, {
+      '@(.+)': (_, s) => el.attr(s),
+      '<html/>': () => unescapeOrNot($.html(el)),
+      '<text/>': () => unescapeOrNot(el.text())
+    });
+    results.push(res);
+  }
+  return results;
+
+  function format(s, replacements) {
+    for (const repl in replacements) {
+      s = s.replace(new RegExp(repl, 'g'), (...args) => replacements[repl](...args));
+    }
+    return s;
+  }
 }
 
 async function fetchWithOptions(url) {
