@@ -29,8 +29,9 @@ cmdr.option('-c, --cache [cachePath]',
   'use cache, if a cache path is specified, use that, ' +
   'other wise, use a path of (os tmp path + base64(url)); '
 );
-cmdr.option('-t --expire [expireTime]', 'default expire time is 1day, if not specified', 86400);
+cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not specified', 86400);
 cmdr.option('-u, --unique', 'unique');
+cmdr.option('-t, --timeout <millsec>', 'set fetch timeout');
 cmdr.option('-a, --asc', 'sort asc');
 cmdr.option('-d, --dasc', 'sort dasc');
 cmdr.option('-v, --verbose', 'show verbose get message');
@@ -269,7 +270,7 @@ async function axiosGetWithOptions(url) {
   }
   if (cmdr.warn) {
     try {
-      return (await axios.get(url)).data;
+      return (await axios.get(url, { timeout: Number(cmdr.timeout) || 30000 })).data;
     } catch (error) {
       console.error('Fetch error:', error.message, url);
       return null;
