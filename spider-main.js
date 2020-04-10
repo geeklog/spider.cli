@@ -3,6 +3,10 @@
 /**
  * Spider tools for cli.
  * run `spider --help` for more infomation.
+ * 
+ * * spider extract https://www.cnbeta.com/ '.items-area .item dl > dt > a => %text : @href' -cE
+ * * spider extract https://www.cnbeta.com/ '.items-area .item dl > dt > a'
+ *    default is %html
  */
 const util = require('util');
 const fs = require('fs-extra');
@@ -220,13 +224,6 @@ async function runsWithOptions(list, opt, runner) {
   return results;
 }
 
-/**
- * spider extract https://www.cnbeta.com/ '.items-area .item dl > dt > a => <text/> | @href' -cE
- * spider extract https://www.cnbeta.com/ '.items-area .item dl > dt > a'
- *   the same as <html/>
- * @param {*} html 
- * @param {*} pattern 
- */
 function parseHtmlWithOption(html, pattern) {
   let [selector, formatter] = pattern.split('=>').map(s => s.trim());
   const $ = cheerio.load(html);
