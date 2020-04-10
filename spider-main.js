@@ -34,12 +34,18 @@ const userAgents = {
   default: 'CURL'
 };
 
+const isURL = s => s && (s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:'));
+const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
+const prettyJSONOrNot = s => cmdr.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
+const prettyHTMLOrNot = s => cmdr.format ? pretty(s) : s;
+
 cmdr.version('0.1.0');
 cmdr.option('-c, --cache [cachePath]', 'use cache, if a cache path is specified, use that, other wise, use a path of (os tmp path + base64(url));')
 cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not specified', 86400)
 cmdr.option('-u, --unique', 'unique')
 cmdr.option('-f, --format', 'prettify html')
 cmdr.option('-t, --timeout <millsec>', 'set fetch timeout')
+cmdr.option('-o --save <save-path>')
 cmdr.option('-a, --asc', 'sort asc')
 cmdr.option('-d, --dasc', 'sort dasc')
 cmdr.option('-v, --log [loglevel]', 'log messages levels:debug/warn/error', 'silent')
@@ -67,21 +73,31 @@ cmdr.command('expands <url>').alias('e')
     expandUrlList(url).map(u => console.log(u));
   });
 
-cmdr.command('get <url>').alias('g')
+cmdr.command('get [url]').alias('g')
   .description('Get resource')
   .action(async url => {
     let urls = await getUrls(url);
-    const htmls = await runsWithOptions(urls, {flatten: true}, fetchWithOptions);
-    for (const html of htmls) {
-      console.log(html);
-    }
+    await runsWithOptions(urls, {flatten: true},
+      async (url) => {
+        log.debug('Get', url);
+        const data = await fetchWithOptions(url);
+        if (cmdr.save) {
+          const savePath = path.join(cmdr.save, encodeURIComponent(url.split('/').pop()));
+          if (!data.pipe) {
+            log.error('no pipe', url);
+          }
+          data.pipe(fs.createWriteStream(savePath));
+        } else {
+          console.log(data);
+        }
+      }
+    );
   });
 
 cmdr.command('links [url]').alias('l')
   .description('Extract links from webpage')
   .action(async url => {
     let urls = await getUrls(url);
-
     let links = await runsWithOptions(urls, {flatten: true},
       async (url) => {
         const html = await fetchWithOptions(url);
@@ -128,17 +144,17 @@ cmdr.command('images <url>').alias('img')
     }
   });
 
-cmdr.command('extract <url> <pattern>').alias('ext')
+cmdr.command('extract <pattern> [url]').alias('ext')
   .description('Extract html page base on the selector pattern')
-  .action(async (url, pattern) => {
-    const urls = expandUrlList(url);
-    const htmls = await runsWithOptions(urls, {flatten: true}, fetchWithOptions);
-    for (let html of htmls) {
-      const results = parseHtmlWithOption(html, pattern);
+  .action(async (pattern, url) => {
+    const urls = await getUrls(url);
+    await runsWithOptions(urls, {}, async url => {
+      const html = await fetchWithOptions(url);
+      const results = parseHtmlWithOption(url, html, pattern).filter(x => !!x);
       for (const r of results) {
         console.log(r);
       }
-    }
+    });
   });
 
 cfgStore.load();
@@ -147,16 +163,12 @@ cmdr.parse(process.argv);
 
 log.level = cmdr.log;
 
-const isURL = s => s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:');
-const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
-const prettyJSONOrNot = s => cmdr.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
-const prettyHTMLOrNot = s => cmdr.format ? pretty(s) : s;
-
 async function getUrls(url) {
   if (!url) {
-    return flatten((await stdin()).split('\n').map(expandUrlList));
+    const urls = flatten((await stdin()).split('\n').map(expandUrlList));
+    return urls.filter(isURL);
   } else {
-    return expandUrlList(url);
+    return expandUrlList(url).filter(isURL);
   }
 }
 
@@ -220,16 +232,19 @@ async function runsWithOptions(list, opt, runner) {
   return results;
 }
 
-function parseHtmlWithOption(html, pattern) {
+function parseHtmlWithOption(mainURL, html, pattern) {
+  // let domain = mainURL.split('/').slice(0,3).join('/');
+  // const fixLink = s => s ? s.startsWith('//') ? (domain + '/' + s) : s : s;
+
   let [selector, formatter] = pattern.split('=>').map(s => s.trim());
   const $ = cheerio.load(html);
   const results = [];
   if (!formatter) {
-    formatter = '<html/>';
+    formatter = '%html';
   }
   for (const el of $(selector).toArray().map($)) {
     const res = format(formatter, {
-      '@(.+)': (_, s) => unescapeOrNot(el.attr(s)),
+      '@(.+)': (_, s) => unescapeOrNot(el.attr(s)) || '',
       '%html': () => unescapeOrNot(prettyHTMLOrNot($.html(el))),
       '%text': () => unescapeOrNot(el.text()),
       '%element': () => util.format(el[0]),
@@ -272,7 +287,12 @@ async function fetchWithOptions(url) {
     const content = await axiosGetWithOptions(url);
     if (content) {
       await fs.ensureFile(cachePath);
-      await fs.writeFile(cachePath, content);
+      if (cmdr.save) {
+        content.pipe(fs.createWriteStream(cachePath));
+      } else {
+        await fs.writeFile(cachePath, content);
+      }
+      return content;
     } else {
       return '';
     }
@@ -285,24 +305,36 @@ async function fetchWithOptions(url) {
     const content = await axiosGetWithOptions(url);
     if (content) {
       await fs.ensureFile(cachePath);
-      await fs.writeFile(cachePath, content);
+      if (cmdr.save) {
+        content.pipe(fs.createWriteStream(cachePath));
+      } else {
+        await fs.writeFile(cachePath, content);
+      }
     }
     return content;
   } else {
-    return (await fs.readFile(cachePath)).toString();
+    if (cmdr.save) {
+      return fs.createReadStream(cachePath);
+    } else {
+      return (await fs.readFile(cachePath)).toString();
+    }
   }
 }
 
 async function axiosGetWithOptions(url) {
   log.debug('Get', url);
   try {
-    const res = await axios.get(url, {
+    const {data} = await axios.get(url, {
       timeout: Number(cmdr.timeout) || 30000,
       headers: {
         'User-Agent': userAgents[cmdr.userAgent || 'default']
-      }
+      },
+      responseType: cmdr.save ? 'stream' : undefined
     });
-    return prettyHTMLOrNot(res.data);
+    if (cmdr.save) {
+      return data; // This is a pipable stream.
+    }
+    return prettyHTMLOrNot(data);
   } catch (error) {
     log.error('Fetch error:', error.message, url);
     return null;
@@ -326,5 +358,21 @@ function toFilePath(s, format='hierachy') {
   }
   return s;
 }
+
+async function collectStream(stream) {
+  const chunks = [];
+  return new Promise((resolve, reject) => {
+    stream.on('data', chunk => {
+      chunks.push(chunk);
+    });
+    stream.on('end', () => {
+      resolve(Buffer.concat(chunks));
+    });
+    stream.on('error', (err) => {
+      reject(err);
+    });
+  });
+}
+
 
 process.on('unhandledRejection', e => log.error('UnhandleRejection', e));
