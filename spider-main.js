@@ -23,7 +23,6 @@ const entities = new (require('html-entities').XmlEntities)();
 const stdin = require('./stdin');
 const log = require('./log');
 const cfgStore = require('./config')('~/.spider.cli.json');
-
 const dir = s => path.join(__dirname, s);
 
 const REGEX_HTTP_URL = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
@@ -34,13 +33,6 @@ const userAgents = {
   googlebot: 'Googlebot/2.1 (+http://www.googlebot.com/bot.html)',
   default: 'CURL'
 };
-
-const isURL = s => s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:');
-const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
-const prettyJSONOrNot = s => cmdr.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
-const prettyHTMLOrNot = s => cmdr.format ? pretty(s) : s;
-
-cfgStore.load();
 
 cmdr.version('0.1.0');
 cmdr.option('-c, --cache [cachePath]', 'use cache, if a cache path is specified, use that, other wise, use a path of (os tmp path + base64(url));')
@@ -81,7 +73,7 @@ cmdr.command('get <url>').alias('g')
     let urls = await getUrls(url);
     const htmls = await runsWithOptions(urls, {flatten: true}, fetchWithOptions);
     for (const html of htmls) {
-      console.log(prettyHTMLOrNot(html));
+      console.log(html);
     }
   });
 
@@ -149,13 +141,16 @@ cmdr.command('extract <url> <pattern>').alias('ext')
     }
   });
 
+cfgStore.load();
+
 cmdr.parse(process.argv);
 
 log.level = cmdr.log;
 
-/*****************************************
- * Common utils
- *****************************************/ 
+const isURL = s => s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:');
+const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
+const prettyJSONOrNot = s => cmdr.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
+const prettyHTMLOrNot = s => cmdr.format ? pretty(s) : s;
 
 async function getUrls(url) {
   if (!url) {
@@ -301,12 +296,13 @@ async function fetchWithOptions(url) {
 async function axiosGetWithOptions(url) {
   log.debug('Get', url);
   try {
-    return (await axios.get(url, {
+    const res = await axios.get(url, {
       timeout: Number(cmdr.timeout) || 30000,
       headers: {
         'User-Agent': userAgents[cmdr.userAgent || 'default']
       }
-    })).data;
+    });
+    return prettyHTMLOrNot(res.data);
   } catch (error) {
     log.error('Fetch error:', error.message, url);
     return null;
@@ -331,4 +327,4 @@ function toFilePath(s, format='hierachy') {
   return s;
 }
 
-process.on('unhandledRejection', e => console.error(e))
+process.on('unhandledRejection', e => log.error('UnhandleRejection', e));
