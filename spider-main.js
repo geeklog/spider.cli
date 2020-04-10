@@ -4,7 +4,7 @@
  * Spider tools for cli.
  * run `spider --help` for more infomation.
  */
-
+const util = require('util');
 const fs = require('fs-extra');
 const axios = require('axios');
 const cmdr = require('commander');
@@ -25,25 +25,22 @@ const REGEX_HTTP_URL = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z
 const REGEX_ANY_URL = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
 const REGEX_IMG_TAG = /<img.*?src="(.*?)"[^>]+>/g;
 
+const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
+const prettyJSONOrNot = s => cmdr.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
+const prettyHTMLOrNot = s => cmdr.format ? pretty(s) : s;
+
 cmdr.version('0.1.0');
-cmdr.option('-c, --cache [cachePath]',
-  'use cache, if a cache path is specified, use that, ' +
-  'other wise, use a path of (os tmp path + base64(url)); '
-);
-cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not specified', 86400);
-cmdr.option('-u, --unique', 'unique');
-cmdr.option('-f, --format', 'prettify html');
-cmdr.option('-t, --timeout <millsec>', 'set fetch timeout');
-cmdr.option('-a, --asc', 'sort asc');
-cmdr.option('-d, --dasc', 'sort dasc');
-cmdr.option('-v, --log [loglevel]', 'log messages', 'silent');
-cmdr.option('-w, --warn', 'ignore fetch error, just show as warning');
-cmdr.option('-D, --decode-entities', 'decode html entities');
-cmdr.option('-H, --html', 'output as html');
-cmdr.option('-p, --parallel <n>',
-  'jobs run sequentially at default, use this ' +
-  'options to fetch urls parallely at most <n> jobs'
-);
+cmdr.option('-c, --cache [cachePath]', 'use cache, if a cache path is specified, use that, other wise, use a path of (os tmp path + base64(url));')
+cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not specified', 86400)
+cmdr.option('-u, --unique', 'unique')
+cmdr.option('-f, --format', 'prettify html')
+cmdr.option('-t, --timeout <millsec>', 'set fetch timeout')
+cmdr.option('-a, --asc', 'sort asc')
+cmdr.option('-d, --dasc', 'sort dasc')
+cmdr.option('-v, --log [loglevel]', 'log messages levels:debug/warn/error', 'silent')
+cmdr.option('-D, --decode-entities', 'decode html entities')
+cmdr.option('-H, --html', 'output as html')
+cmdr.option('-p, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs');
 
 cmdr.command('expands <url>').alias('e')
   .description('Expands url pattern [1..100]')
@@ -54,12 +51,10 @@ cmdr.command('expands <url>').alias('e')
 cmdr.command('get <url>').alias('g')
   .description('Get resource')
   .action(async url => {
-    const prettyOrNot = s => cmdr.format ? pretty(s) : s;
     let urls = await getUrls(url);
-    console.log(urls)
     const htmls = await runsWithOptions(urls, {flatten: true}, fetchWithOptions);
     for (const html of htmls) {
-      console.log(prettyOrNot(html));
+      console.log(prettyHTMLOrNot(html));
     }
   });
 
@@ -164,7 +159,7 @@ function expandUrlList(url) {
   }
   const [all,left,right] = range;
   const urls = [];
-  for (let i=Number(left); i<Number(right); i++) {
+  for (let i=Number(left); i<=Number(right); i++) {
     urls.push(url.replace(all, i));
   }
   return urls;
@@ -210,7 +205,6 @@ async function runsWithOptions(list, opt, runner) {
  * @param {*} pattern 
  */
 function parseHtmlWithOption(html, pattern) {
-  const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
   let [selector, formatter] = pattern.split('=>').map(s => s.trim());
   const $ = cheerio.load(html);
   const results = [];
@@ -220,8 +214,10 @@ function parseHtmlWithOption(html, pattern) {
   for (const el of $(selector).toArray().map($)) {
     const res = format(formatter, {
       '@(.+)': (_, s) => unescapeOrNot(el.attr(s)),
-      '<html/>': () => unescapeOrNot($.html(el)),
-      '<text/>': () => unescapeOrNot(el.text())
+      '%html': () => unescapeOrNot(prettyHTMLOrNot($.html(el))),
+      '%text': () => unescapeOrNot(el.text()),
+      '%element': () => util.format(el[0]),
+      '%json': () => el[0].children.map(_ => prettyJSONOrNot(_.data)).join('\n')
     });
     results.push(res);
   }
