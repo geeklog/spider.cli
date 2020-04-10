@@ -83,9 +83,6 @@ cmdr.command('get [url]').alias('g')
         const data = await fetchWithOptions(url);
         if (cmdr.save) {
           const savePath = path.join(cmdr.save, encodeURIComponent(url.split('/').pop()));
-          if (!data.pipe) {
-            log.error('no pipe', url);
-          }
           data.pipe(fs.createWriteStream(savePath));
         } else {
           console.log(data);
