@@ -17,6 +17,7 @@ const cheerio = require('cheerio');
 const crypto = require('crypto');
 const entities = new (require('html-entities').XmlEntities)();
 const stdin = require('./stdin');
+const log = require('./log');
 
 const dir = s => path.join(__dirname, s);
 
@@ -31,10 +32,11 @@ cmdr.option('-c, --cache [cachePath]',
 );
 cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not specified', 86400);
 cmdr.option('-u, --unique', 'unique');
+cmdr.option('-f, --format', 'prettify html');
 cmdr.option('-t, --timeout <millsec>', 'set fetch timeout');
 cmdr.option('-a, --asc', 'sort asc');
 cmdr.option('-d, --dasc', 'sort dasc');
-cmdr.option('-v, --verbose', 'show verbose get message');
+cmdr.option('-v, --log [loglevel]', 'log messages', 'silent');
 cmdr.option('-w, --warn', 'ignore fetch error, just show as warning');
 cmdr.option('-D, --decode-entities', 'decode html entities');
 cmdr.option('-H, --html', 'output as html');
@@ -49,15 +51,22 @@ cmdr.command('expands <url>').alias('e')
     expandUrlList(url).map(u => console.log(u));
   });
 
+cmdr.command('get <url>').alias('g')
+  .description('Get resource')
+  .action(async url => {
+    const prettyOrNot = s => cmdr.format ? pretty(s) : s;
+    let urls = await getUrls(url);
+    console.log(urls)
+    const htmls = await runsWithOptions(urls, {flatten: true}, fetchWithOptions);
+    for (const html of htmls) {
+      console.log(prettyOrNot(html));
+    }
+  });
+
 cmdr.command('links [url]').alias('l')
   .description('Extract links from webpage')
   .action(async url => {
-    let urls;
-    if (!url) {
-      urls = flatten((await stdin()).split('\n').map(expandUrlList));
-    } else {
-      urls = expandUrlList(url);
-    }
+    let urls = await getUrls(url);
 
     let links = await runsWithOptions(urls, {flatten: true},
       async (url) => {
@@ -102,7 +111,7 @@ cmdr.command('images <url>').alias('img')
     } else {
       imgs.map(u => console.log(u));
     }
-  })
+  });
 
 cmdr.command('extract <url> <pattern>').alias('ext')
   .description('Extract html page base on the selector pattern')
@@ -119,10 +128,19 @@ cmdr.command('extract <url> <pattern>').alias('ext')
 
 cmdr.parse(process.argv);
 
+log.level = cmdr.log;
 
 /*****************************************
  * Common utils
  *****************************************/ 
+
+async function getUrls(url) {
+  if (!url) {
+    return flatten((await stdin()).split('\n').map(expandUrlList));
+  } else {
+    return expandUrlList(url);
+  }
+}
 
 function template(tmplName) {
   const tmpl = fs.readFileSync(dir(`tmpl/${tmplName}.html`)).toString();
@@ -265,18 +283,12 @@ async function fetch(url, cfg) {
 }
 
 async function axiosGetWithOptions(url) {
-  if (cmdr.verbose) {
-    console.log('Get', url);
-  }
-  if (cmdr.warn) {
-    try {
-      return (await axios.get(url, { timeout: Number(cmdr.timeout) || 30000 })).data;
-    } catch (error) {
-      console.error('Fetch error:', error.message, url);
-      return null;
-    }
-  } else {
-    return (await axios.get(url)).data;
+  log.debug('Get', url);
+  try {
+    return (await axios.get(url, { timeout: Number(cmdr.timeout) || 30000 })).data;
+  } catch (error) {
+    log.error('Fetch error:', error.message, url);
+    return null;
   }
 }
 
