@@ -25,6 +25,11 @@ const dir = s => path.join(__dirname, s);
 const REGEX_HTTP_URL = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
 const REGEX_ANY_URL = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
 const REGEX_IMG_TAG = /<img.*?src="(.*?)"[^>]+>/g;
+const userAgents = {
+  chrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36',
+  googlebot: 'Googlebot/2.1 (+http://www.googlebot.com/bot.html)',
+  default: 'CURL'
+};
 
 const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
 const prettyJSONOrNot = s => cmdr.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
@@ -43,6 +48,7 @@ cmdr.option('-d, --dasc', 'sort dasc')
 cmdr.option('-v, --log [loglevel]', 'log messages levels:debug/warn/error', 'silent')
 cmdr.option('-D, --decode-entities', 'decode html entities')
 cmdr.option('-H, --html', 'output as html')
+cmdr.option('-A, --user-agent', 'user agent: chrome/firefox/safari')
 cmdr.option('-p, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs');
 
 cmdr.command('config <getset> <key> [value]')
@@ -82,11 +88,12 @@ cmdr.command('links [url]').alias('l')
     let links = await runsWithOptions(urls, {flatten: true},
       async (url) => {
         const html = await fetchWithOptions(url);
-        return html.match(REGEX_HTTP_URL);
+        return html ? html.match(REGEX_HTTP_URL) : null;
       }
     );
 
     links = convertListWithOptions(links);
+    links = links.filter(_ => !!_);
 
     if (cmdr.html) {
       let html = template('html');
@@ -103,9 +110,9 @@ cmdr.command('images <url>').alias('img')
   .action(async url => {
     const urls = expandUrlList(url);
 
-    let imgs = runsWithOptions(urls, {flatten: true}, async url => {
+    let imgs = await runsWithOptions(urls, {flatten: true}, async url => {
       const html = await fetchWithOptions(url);
-      return html.match(REGEX_IMG_TAG);
+      return html ? html.match(REGEX_IMG_TAG) : null;
     });
 
     imgs = convertListWithOptions(imgs);
@@ -270,8 +277,8 @@ async function fetch(url, cfg) {
   }
 
   const cachePath = isString(cfg.cache)
-    ? path.join(cfg.cache, shortenURL(url))
-    : path.join(os.tmpdir(), shortenURL(url));
+    ? path.join(cfg.cache, toFilePath(url))
+    : path.join(os.tmpdir(), toFilePath(url));
 
   if (!await fs.pathExists(cachePath)) {
     const content = await axiosGetWithOptions(url);
@@ -301,15 +308,33 @@ async function fetch(url, cfg) {
 async function axiosGetWithOptions(url) {
   log.debug('Get', url);
   try {
-    return (await axios.get(url, { timeout: Number(cmdr.timeout) || 30000 })).data;
+    return (await axios.get(url, {
+      timeout: Number(cmdr.timeout) || 30000,
+      headers: {
+        'User-Agent': userAgents[cmdr.userAgent || 'default']
+      }
+    })).data;
   } catch (error) {
     log.error('Fetch error:', error.message, url);
     return null;
   }
 }
 
-function shortenURL(s) {
-  s = crypto.createHash('md5').update(s).digest('hex');
+function toFilePath(s, format='hierachy') {
+  if (format === 'hierachy') {
+    s = s.split('/').filter(s => !!s);
+    s[0] = s[0].replace(':', '');
+    if (s.length === 2) {
+      s.push('index.html')
+    }
+    s = s.map(encodeURIComponent);
+    s = path.join(...s);
+    if (!s.match(/\.(htm|html|json|xhtml|xml|pdf|asp|aspx|php|png|gif|jpg|jpeg|svg|txt|zip|mov|avi|psd|rtf)$/)) {
+      s = s + '.html';
+    }
+  } else if (format==='md5') {
+    s = crypto.createHash('md5').update(s).digest('hex');
+  }
   return s;
 }
 
