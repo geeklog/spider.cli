@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const entities = new (require('html-entities').XmlEntities)();
 const stdin = require('./stdin');
 const log = require('./log');
+const cfgStore = require('./config')('~/.spider.cli.json');
 
 const dir = s => path.join(__dirname, s);
 
@@ -28,6 +29,8 @@ const REGEX_IMG_TAG = /<img.*?src="(.*?)"[^>]+>/g;
 const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
 const prettyJSONOrNot = s => cmdr.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
 const prettyHTMLOrNot = s => cmdr.format ? pretty(s) : s;
+
+cfgStore.load();
 
 cmdr.version('0.1.0');
 cmdr.option('-c, --cache [cachePath]', 'use cache, if a cache path is specified, use that, other wise, use a path of (os tmp path + base64(url));')
@@ -41,6 +44,19 @@ cmdr.option('-v, --log [loglevel]', 'log messages levels:debug/warn/error', 'sil
 cmdr.option('-D, --decode-entities', 'decode html entities')
 cmdr.option('-H, --html', 'output as html')
 cmdr.option('-p, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs');
+
+cmdr.command('config <getset> <key> [value]')
+  .description('get or set configuration, the default configuration is store at ~/.spider.cli.json')
+  .action((getset, key, value) => {
+    if (getset === 'get') {
+      console.log(cfgStore.data[key]);
+    } else if (getset === 'set') {
+      cfgStore.data[key] = value;
+      cfgStore.save();
+    } else {
+      throw new Error('Wrong Param');
+    }
+  });
 
 cmdr.command('expands <url>').alias('e')
   .description('Expands url pattern [1..100]')
@@ -221,6 +237,7 @@ function parseHtmlWithOption(html, pattern) {
     });
     results.push(res);
   }
+  
   return results;
 
   function format(s, replacements) {
@@ -232,7 +249,10 @@ function parseHtmlWithOption(html, pattern) {
 }
 
 async function fetchWithOptions(url) {
-  return await fetch(url, {cache: cmdr.cache, expire: cmdr.expire});
+  return await fetch(url, {
+    cache: cmdr.cache === true ? cfgStore.data.cachePath: cmdr.cache,
+    expire: cmdr.expire
+  });
 }
 
 async function fetch(url, cfg) {
