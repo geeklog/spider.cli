@@ -35,6 +35,7 @@ const userAgents = {
   default: 'CURL'
 };
 
+const isURL = s => s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:');
 const unescapeOrNot = s => cmdr.unescape ? entities.decode(s) : s;
 const prettyJSONOrNot = s => cmdr.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
 const prettyHTMLOrNot = s => cmdr.format ? pretty(s) : s;
@@ -253,15 +254,10 @@ function parseHtmlWithOption(html, pattern) {
 }
 
 async function fetchWithOptions(url) {
-  return await fetch(url, {
+  const cfg = {
     cache: cmdr.cache === true ? cfgStore.data.cachePath: cmdr.cache,
     expire: cmdr.expire
-  });
-}
-
-async function fetch(url, cfg) {
-  const isURL = s => s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:');
-
+  };
   if (!isURL(url)) {
     if (!await fs.pathExists(url)) {
       return '';
