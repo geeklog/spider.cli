@@ -145,6 +145,7 @@ cmdr.command('extract <pattern> [url]').alias('ext')
   .description('Extract html page base on the selector pattern')
   .action(async (pattern, url) => {
     const urls = await getUrls(url);
+    log.debug('Get', urls);
     await runsWithOptions(urls, {}, async url => {
       const html = await fetchWithOptions(url);
       const results = parseHtmlWithOption(url, html, pattern).filter(x => !!x);
@@ -241,7 +242,7 @@ function parseHtmlWithOption(mainURL, html, pattern) {
   }
   for (const el of $(selector).toArray().map($)) {
     const res = format(formatter, {
-      '@(.+)': (_, s) => unescapeOrNot(el.attr(s)) || '',
+      '@([a-z|A-Z|0-9|-|_]+)': (_, s) => unescapeOrNot(el.attr(s)) || '',
       '%html': () => unescapeOrNot(prettyHTMLOrNot($.html(el))),
       '%text': () => unescapeOrNot(el.text()),
       '%element': () => util.format(el[0]),
