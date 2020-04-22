@@ -4,9 +4,9 @@
  * Spider tools for cli.
  * run `spider --help` for more infomation.
  * 
- * * spider extract '.items-area .item dl > dt > a => %text : @href' https://www.cnbeta.com/
- * * spider extract '.items-area .item dl > dt > a' https://www.cnbeta.com/ 
- *    default is %html
+ * spider css '#hnmain tr.athing td.title a => %text : @href' 'https://news.ycombinator.com/news?p=[1..10]'
+ * spider css '#hnmain tr.athing td.title a => %text : @href' 'https://news.ycombinator.com/news?p=1' --follow 'a.morelink => @href'
+ * spider link 'https://news.ycombinator.com/news?p=[1..10]' -u -n 3 | spider link -cu -n 20 -t 1000 -r 3
  */
 const {spawn} = require('child_process');
 const path = require('path');
@@ -24,14 +24,6 @@ const getOptions = o => {
   }
   return options;
 }
-
-
-const runSpider = async (url, fn) => {
-  const spider = new Spider(cmdr);
-  const urls = await resolveURLs(url, spider.expand);
-  const output = uniqOutput(cmdr.unique);
-  concurrently(cmdr.parallel, urls, async u => await fn(u, spider, output));
-};
 
 cmdr.version('0.1.0');
 cmdr.option('-c, --cache [cachePath]', 'use cache, if a cache path is specified, use that, other wise, use a path of (os tmp path + base64(url));')

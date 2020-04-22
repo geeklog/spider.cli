@@ -1,0 +1,139 @@
+
+
+spider extract -c /Volumes/Z/.WebCache -p 3 https://hackernoon.com/tagged/hackernoon-top-story/?page=[1..3] 'main article > h2 > a'
+
+spider get https://hackernoon.com/tagged/hackernoon-top-story
+spider extract https://hackernoon.com/tagged/hackernoon-top-story 'script#__NEXT_DATA__ => %json' -c
+
+spider extract https://hackernoon.com/tagged/hackernoon-top-story/?page=[1..3] 'script#__NEXT_DATA__ => <content/>' -p 3 | jq '[.props.pageProps.headerData.subNavItems | .[] | .sections | .[] | .links] | flatten'
+
+spider extract https://hackernoon.com/tagged/hackernoon-top-story\?page\=\[1..3\] 'script#__NEXT_DATA__ => <content/>' -c \
+| tr '\n' '\0' | xargs -0 echo \
+| jq '[.props.pageProps.headerData.subNavItems | .[] | .sections | .[] | .links] | flatten' \
+> links.json && code links.json
+
+spider extract https://hackernoon.com/tagged/hackernoon-top-story\?page\=\[1..3\] 'script#__NEXT_DATA__ => <content/>' -c \
+| jq -s '[.props.pageProps.headerData.subNavItems | .[] | .sections | .[] | .links] | flatten' \
+> links.json && code links.json
+
+spider extract 'https://hackernoon.com/tagged/hackernoon-top-story?page=[1..3]' 'script#__NEXT_DATA__ => %json' -c \
+| jq -sr '.[] | [.props.pageProps.headerData.subNavItems | .[] | .sections | .[] | .links] | flatten | .[] | "[\(.text)](\(.href))"' | sort | uniq > all.md && typora all.md
+
+spider extract '#list-most-recent list-item list-item-image > a' https://beautif11.imgbb.com/albums\?page\=1 -c
+spider extract '.pad-content-listing > .list-item .list-item-image > a => @href' https://ibb.co/album/fcJ5Ov\?sort\=date_asc\&page\=1 -c
+
+
+#list-most-recent > div.pad-content-listing > div:nth-child(1) > div.list-item-image.fixed-size > a
+spider extract '#list-most-recent .list-item .list-item-image > a => @href' https://beautif11.imgbb.com/albums?page=[1..5] -c \
+| spider extract '' -c
+
+spider get https://ibb.co/album/fcJ5Ov?sort=date_asc&page=1
+
+
+spider img 'http://image.baidu.com/search/index?tn=baiduimage&ipn=r&ct=201326592&cl=2&fm=detail&lm=-1&hd=&latest=&copyright=&st=-1&sf=2&fmq=1586527069899_D&fm=detail&pv=&ic=&nc=1&z=0&se=&showtab=0&fb=0&width=&height=&face=0&istype=2&ie=utf-8&word=%E5%9B%BE%E7%89%87' -v error
+
+spider extract '#list-most-recent .pad-content-listing .list-item a.image-container => @href' https://beautif11.imgbb.com/albums\?page\=\[1..10\] -c -p 3
+
+spider extract '.pad-content-listing > .list-item .list-item-image > a' '%url?sort=date_asc&page=[1..10]'
+
+
+
+
+for (url of 'https://beautif11.imgbb.com/albums\?page\=\[1..10\]') {
+  spider extract 'albumLink' 
+}
+
+
+spider extract '.pad-content-listing > .list-item .list-item-image > a => @href' '%var{album}?sort=date_asc&page=[1..10]' | spider extract '.full-szie img => @src'
+
+let albums = spider extract '#list-most-recent .pad-content-listing .list-item a.image-container => @href' https://beautif11.imgbb.com/albums\?page\=\[1..10\];
+for album in alums {
+  let images = spider extract '.pad-content-listing > .list-item .list-item-image > a => @href' `${album}?sort=date_asc&page=[1..10]'` => spider extract 'BigImageURL'
+  spider get images -o album/imageURL;
+}
+
+对主页链接进行分页
+对每个主页获取album链接
+对每个album链接进行分页
+对每个album链接获取图片链接
+对每个图片链接进入，获取大图链接
+保存每个图片到 albumID/图片ID
+
+%main = https://beautif11.imgbb.com/albums?page=[1..10]
+%album = spider extract '.pad-content-listing > .list-item .list-item-image > a => @href' %main
+%albumLink = %album + ?sort=date_asc&page=[1..10]
+%image = spider extract 'BigImageURL' %albumLink
+sipder save %image `%album/%str(image)`
+
+curl https://api.flickr.com/services/rest\?primary_photo_extras\=owner_name%2Cpath_alias%2Crealname%2Csizes%2Curl_sq%2Curl_q%2Curl_t%2Curl_s%2Curl_n%2Curl_w%2Curl_m%2Curl_z%2Curl_c%2Curl_l%2Curl_h%2Curl_k%2Curl_3k%2Curl_4k%2Curl_5k%2Curl_6k%2Cneeds_interstitial\&page\=1\&per_page\=50\&get_user_info\=1\&extras\=can_share%2Ccan_download\&user_id\=61021753%40N02\&viewerNSID\=\&method\=flickr.photosets.getList\&csrf\=\&api_key\=14384112e9b1fdcfd76b0490bf7b87ed\&format\=json\&hermes\=1\&hermesClient\=1\&reqId\=1b3d67f7\&nojsoncallback\=1 | jq '.photosets.photoset | .[] | "https://www.flickr.com/photos/biodivlibrary/albums/\(.id)"'
+
+spider get https://api.flickr.com/services/rest?primary_photo_extras=owner_name%2Cpath_alias%2Crealname%2Csizes%2Curl_sq%2Curl_q%2Curl_t%2Curl_s%2Curl_n%2Curl_w%2Curl_m%2Curl_z%2Curl_c%2Curl_l%2Curl_h%2Curl_k%2Curl_3k%2Curl_4k%2Curl_5k%2Curl_6k%2Cneeds_interstitial&page=1&per_page=50&get_user_info=1&extras=can_share%2Ccan_download&user_id=61021753%40N02&viewerNSID=&method=flickr.photosets.getList&csrf=&api_key=14384112e9b1fdcfd76b0490bf7b87ed&format=json&hermes=1&hermesClient=1&reqId=1b3d67f7&nojsoncallback=1 | jq '.photosets.photoset
+
+
+spider -r script.spy
+
+script.py
+
+get_albums():
+  spider get https://api.flickr.com/services/rest?primary_photo_extras=owner_name%2Cpath_alias%2Crealname%2Csizes%2Curl_sq%2Curl_q%2Curl_t%2Curl_s%2Curl_n%2Curl_w%2Curl_m%2Curl_z%2Curl_c%2Curl_l%2Curl_h%2Curl_k%2Curl_3k%2Curl_4k%2Curl_5k%2Curl_6k%2Cneeds_interstitial&page=[1..70]&per_page=50&get_user_info=1&extras=can_share%2Ccan_download&user_id=61021753%40N02&viewerNSID=&method=flickr.photosets.getList&csrf=&api_key=14384112e9b1fdcfd76b0490bf7b87ed&format=json&hermes=1&hermesClient=1&reqId=1b3d67f7&nojsoncallback=1 | jq '.photosets.photoset
+
+get_pics_in_album(url):
+  sipder extract '.photo-list-photo-interaction a => @href'
+
+get_big_pic(url):
+  spider extract 'img.zoom-small
+save_img(url):
+  spider extract
+
+flow:
+  get_albums ==1=1==> get_pics_in_album
+[|get_big_pic|]  => @src' ==> 
+
+
+const REGEX_HTTP_URL = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
+const REGEX_ANY_URL = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
+const REGEX_IMG_TAG = /<img.*?src="(.*?)"[^>]+>/g;
+
+
+function hash_djb2(str) {
+  let hash = 5381;
+  let i=0;
+  let c = str.charCodeAt(0);
+  while (c) {
+    hash = hash * 33 + c;
+    c = str.charCodeAt(i++);
+  }
+  return hash;
+}
+
+
+function toDecimal(str, charset) {
+  str = str.split('').reverse().join('');
+  let value = 0;
+  let scale = 1;
+  for (let i=0; i<str.length; i++) {
+    value += charset.indexOf(str[i]) * scale;
+    scale *= charset.length;
+  }
+  return value;
+}
+
+function fromDecimal(num, charset) {
+  let str = ''
+  while (num !== 0) {
+    let a = num % charset.length;
+    str = charset[a] + str;
+    num = Math.floor(num / charset.length);
+  }
+  return str;
+}
+
+const charset = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-';
+// const charset = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,!@#$%^&*()_-`~+=[]{}\\|/?><;:\'"';
+
+console.log(toDecimal('------', charset));
+// console.log(fromDecimal(0xabcdef1027641, charset));
+
+// for (let i=0; i<65536; i++) {
+//   console.log(`${i.toString(16)} => ${fromDecimal(i, charset)}`);
+// }

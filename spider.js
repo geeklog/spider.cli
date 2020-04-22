@@ -1,4 +1,3 @@
-const log = require('./log');
 const util = require('util');
 const fs = require('fs-extra');
 const axios = require('axios');
@@ -14,9 +13,6 @@ const JQ = require('node-jq');
 const concurrent = require('concurr').default;
 const stdin = require(path.join(__dirname, './stdin'));
 
-const REGEX_HTTP_URL = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
-const REGEX_ANY_URL = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
-const REGEX_IMG_TAG = /<img.*?src="(.*?)"[^>]+>/g;
 const userAgents = {
   chrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36',
   googlebot: 'Googlebot/2.1 (+http://www.googlebot.com/bot.html)',
@@ -200,11 +196,25 @@ class Response {
   }
 
   links() {
-    return this.regex(REGEX_HTTP_URL);
+    const p = this.css('a => @href').then(links => {
+      if (!links) {
+        return [];
+      }
+      return links.map(l => this.fixLink(l));
+    });
+    p.get = () => p.then(links => links[0]);
+    p.getall = () => p.then(links => links);
+    return p;
   }
 
   images(group=0) {
-    return this.regex(REGEX_IMG_TAG, group);
+    if (group === 0) {
+      return this.css('img');
+    } else if (group === 1) {
+      return this.css('img => @src');
+    } else {
+      throw new Error('Invalid group: ' + group);
+    }
   }
 
   pipe(stream) {
@@ -338,7 +348,6 @@ module.exports = class Spider {
       i++;
     }
   }
-  
   
   async get(url, options = {}) {
     options = Object.assign({}, this.options, options);
