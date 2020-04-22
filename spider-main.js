@@ -9,11 +9,8 @@
  *    default is %html
  */
 const {spawn} = require('child_process');
-const concurrent = require('concurr').default;
-const {flatten} = require('lodash');
 const path = require('path');
 const Spider = require(path.join(__dirname, './spider'));
-const stdin = require(path.join(__dirname, './stdin'));
 const cmdr = require('commander');
 
 const getOptions = o => {
@@ -28,36 +25,6 @@ const getOptions = o => {
   return options;
 }
 
-const resolveURLs = async (url, expand) => {
-  if (url) {
-    return expand(url);
-  } else {
-    const urls = flatten((await stdin()).split('\n').map(s => expand(s)));
-    return urls;
-  }
-};
-
-const concurrently = (n, vals, fn) => {
-  const q = concurrent(n);
-  for (const v of vals) {
-    q.go(fn.bind(null, v));
-  }
-};
-
-const uniqOutput = (b) => {
-  const a = new Set();
-  return (s) => {
-    if (!b) {
-      console.log(s);
-      return;
-    }
-    if (a.has(s)) {
-      return;
-    }
-    a.add(s);
-    console.log(s);
-  }
-};
 
 const runSpider = async (url, fn) => {
   const spider = new Spider(cmdr);
@@ -92,51 +59,46 @@ cmdr.command('config <getset> <key> [value]')
   });
 cmdr.command('expand <url>').alias('e')
   .description('Expands url pattern [1..100]')
-  .action(async url =>
-    new Spider(cmdr).expand(url).map(u => console.log(u))
-  );
+  .action(url => {
+    Spider.expand(url).map(u => console.log(u))
+  });
 cmdr.command('res.headers [url]')
   .description('show the response headers')
-  .action(async (url) => runSpider(url, async (u, spider, output) => {
-    const res = await spider.get(u);
-    output(res.headers);
-  }));
+  .action(url => {
+    Spider.runForResponse(url, cmdr, (res, output) => output(res.headers))
+  });
 cmdr.command('get [url]').alias('g')
   .description('Get resource')
-  .action(async url => runSpider(url, async (u, spider, output) => {
-    const res = await spider.get(u);
-    output(await res.getData());
-  }));
+  .action(url => {
+    Spider.runForResponse(url, cmdr, async (res, output) => output(await res.getData()))
+  });
 cmdr.command('save <path> [url]')
   .description('Save resource to path')
-  .action(async (url, path) => runSpider(url, async (u, spider) => {
-    const filePath = spider.toSavePath(u, path);
-    await spider.save(url, filePath);
-  }));
+  .action((url, path) => {
+    Spider.runForSpider(url, cmdr, async (u, spider) => {
+      const filePath = spider.toSavePath(u, path);
+      await spider.save(url, filePath);
+    })
+  });
 cmdr.command('css <selector> [url]').alias('ext')
   .description('Apply css selector to extract content from html')
   .action(async (selector, url) => {
-    runSpider(url, async (u, spider, output) => {
-      const res = await spider.get(u);
-      (await res.css(selector).getall()).map(output);
+    Spider.runForResponse(url, cmdr, async (res, output) => {
+      const ss = await res.css(selector).getall();
+      ss.map(output);
     });
   });
 cmdr.command('regex <re> [url]').alias('re')
   .description('Match RegExp from webpage')
   .action(async (re, url) => {
-    runSpider(url, async (u, spider, output) => {
-      const res = await spider.get(u);
+    Spider.runForResponse(url, cmdr, async (res, output) => {
       (await res.regex(re).getall()).map(output);
     });
   });
 cmdr.command('link [url]').alias('l')
   .description('Extract links from webpage')
   .action(async url => {
-    runSpider(url, async (u, spider, output) => {
-      if (!u) {
-        return;
-      }
-      const res = await spider.get(u);
+    Spider.runForResponse(url, cmdr, async (res, output) => {
       for (const link of await res.links().getall()) {
         output(link);
       }
@@ -145,8 +107,7 @@ cmdr.command('link [url]').alias('l')
 cmdr.command('image <url> [extractLevel]').alias('img')
   .description('Extract images from webpage')
   .action(async (url, extractLevel) => {
-    runSpider(url, async (u, spider, output) => {
-      const res = await spider.get(u);
+    Spider.runForResponse(url, cmdr, async (res, output) => {
       (await res.images(extractLevel).getall()).map(output);
     });
   });

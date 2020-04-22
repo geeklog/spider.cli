@@ -4,13 +4,15 @@ const fs = require('fs-extra');
 const axios = require('axios');
 const path = require('path');
 const os = require('os');
-const {uniq, isArray, isString, isJSON, isFunction} = require('lodash');
+const {uniq, flatten, isArray, isString, isJSON, isFunction} = require('lodash');
 const isStream = require('is-stream');
 const pretty = require('pretty');
 const cheerio = require('cheerio');
 const crypto = require('crypto');
 const entities = new (require('html-entities').XmlEntities)();
 const JQ = require('node-jq');
+const concurrent = require('concurr').default;
+const stdin = require(path.join(__dirname, './stdin'));
 
 const REGEX_HTTP_URL = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
 const REGEX_ANY_URL = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
@@ -39,6 +41,38 @@ async function collectStream(stream) {
     });
   });
 }
+
+const resolveURLs = async (url, expand) => {
+  if (url) {
+    return expand(url);
+  } else {
+    const urls = flatten((await stdin()).split('\n').map(s => expand(s)));
+    return urls;
+  }
+};
+
+const concurrently = (n, vals, fn) => {
+  const q = concurrent(n);
+  for (const v of vals) {
+    q.go(fn.bind(null, v));
+  }
+  return q;
+};
+
+const uniqOutput = (b) => {
+  const a = new Set();
+  return (s) => {
+    if (!b) {
+      console.log(s);
+      return;
+    }
+    if (a.has(s)) {
+      return;
+    }
+    a.add(s);
+    console.log(s);
+  }
+};
 
 class Logger {
   constructor(level = 'none') {
@@ -89,6 +123,14 @@ class Response {
     this.unescapeOrNot = s => this.options.unescape ? entities.decode(s) : s;
     this.prettyJSONOrNot = s => this.options.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
     this.prettyHTMLOrNot = s => this.options.format ? pretty(s) : s;
+  }
+
+  fixLink(link) {
+    if (link.startsWith('http:') || link.startsWith('https:')) {
+      return link;
+    }
+    const domain = this.url.split('/').slice(0, 3).join('/');
+    return domain + '/' + link;
   }
 
   async getData() {
@@ -175,6 +217,48 @@ class Response {
 
 module.exports = class Spider {
 
+  static async runForResponse(startUrls, options, _yield) {
+    const spider = new Spider(options);
+    const urls = await resolveURLs(startUrls, Spider.expand);
+    const output = uniqOutput(options.unique);
+    let q;
+    const fn = async u => {
+      if (!u) {
+        return;
+      }
+      const res = await spider.get(u);
+      await _yield(res, output);
+      if (options.follow) {
+        const followURL = await res.css(options.follow).get();
+        q.go(fn.bind(null, res.fixLink(followURL)));
+      }
+    }
+    q = concurrently(options.parallel, urls, fn);
+  }
+
+  static async runForSpider(startUrls, options, _yield) {
+    const spider = new Spider(options);
+    const urls = await resolveURLs(startUrls, Spider.expand);
+    const output = uniqOutput(options.unique);
+    const fn = async u => {
+      await _yield(u, spider, output);
+    }
+    concurrently(options.parallel, urls, fn);
+  }
+
+  static expand(url) {
+    const range = url.match(/\[(\d+?)\.\.(\d+?)]/);
+    if (!range) {
+      return [url];
+    }
+    const [all,left,right] = range;
+    const urls = [];
+    for (let i=Number(left); i<=Number(right); i++) {
+      urls.push(url.replace(all, i));
+    }
+    return urls;
+  }
+
   constructor(options = {}) {
     this.options = options;
     this.cfg = new ConfigLoader('~/.spider.cli.json');
@@ -197,19 +281,6 @@ module.exports = class Spider {
   setConfig(key, value) {
     this.cfg.data[key] = value;
     this.cfg.save();
-  }
-
-  expand(url) {
-    const range = url.match(/\[(\d+?)\.\.(\d+?)]/);
-    if (!range) {
-      return [url];
-    }
-    const [all,left,right] = range;
-    const urls = [];
-    for (let i=Number(left); i<=Number(right); i++) {
-      urls.push(url.replace(all, i));
-    }
-    return urls;
   }
 
   async shell(url) {
