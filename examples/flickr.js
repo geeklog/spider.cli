@@ -5,7 +5,7 @@ const path = require('path');
 const spider = new Spider({
   cache: true,
   retry: 3,
-  logLevel: 'debug'
+  log: 'debug'
 });
 const pipeline = new Pipeline();
 

@@ -108,6 +108,50 @@ class ConfigLoader {
   }
 }
 
+class CssSelector {
+  constructor(content, options) {
+    this.content = content;
+    this.options = options;
+    this.unescapeOrNot = s => this.options.unescape ? entities.decode(s) : s;
+    this.prettyJSONOrNot = s => this.options.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
+    this.prettyHTMLOrNot = s => this.options.format ? pretty(s) : s;
+  }
+  css(pattern) {
+    let [selector, formatter] = pattern.split('=>').map(s => s.trim());
+    const data = this.content;
+    if (!data) {
+      return null;
+    }
+    const $ = cheerio.load(data);
+    const results = [];
+    if (!formatter) {
+      formatter = '%html';
+    }
+    for (const el of $(selector).toArray().map($)) {
+      const res = format(formatter, {
+        '@([a-z|A-Z|0-9|-|_]+)': (_, s) => this.unescapeOrNot(el.attr(s)) || '',
+        '%html': () => this.unescapeOrNot(this.prettyHTMLOrNot($.html(el))),
+        '%text': () => this.unescapeOrNot(el.text()),
+        '%element': () => util.format(el[0]),
+        '%json': () => el[0].children.map(_ => this.prettyJSONOrNot(_.data)).join('\n')
+      });
+      results.push(res);
+    }
+    
+    return {
+      get: () => results[0],
+      getall: () => results
+    };
+
+    function format(s, replacements) {
+      for (const repl in replacements) {
+        s = s.replace(new RegExp(repl, 'g'), (...args) => replacements[repl](...args));
+      }
+      return s;
+    }
+  }
+}
+
 class Response {
 
   constructor({url, data, res, options}) {
@@ -116,9 +160,6 @@ class Response {
     this.data = data || (res ? res.data : null);
     this.headers = res ? res.headers: null;
     this.options = options;
-    this.unescapeOrNot = s => this.options.unescape ? entities.decode(s) : s;
-    this.prettyJSONOrNot = s => this.options.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
-    this.prettyHTMLOrNot = s => this.options.format ? pretty(s) : s;
   }
 
   fixLink(link) {
@@ -144,38 +185,18 @@ class Response {
   }
 
   css(pattern) {
-    let [selector, formatter] = pattern.split('=>').map(s => s.trim());
-    const p = this.getData().then(data => {
-      if (!data) {
-        return null;
-      }
-      const $ = cheerio.load(data);
-      const results = [];
-      if (!formatter) {
-        formatter = '%html';
-      }
-      for (const el of $(selector).toArray().map($)) {
-        const res = format(formatter, {
-          '@([a-z|A-Z|0-9|-|_]+)': (_, s) => this.unescapeOrNot(el.attr(s)) || '',
-          '%html': () => this.unescapeOrNot(this.prettyHTMLOrNot($.html(el))),
-          '%text': () => this.unescapeOrNot(el.text()),
-          '%element': () => util.format(el[0]),
-          '%json': () => el[0].children.map(_ => this.prettyJSONOrNot(_.data)).join('\n')
-        });
-        results.push(res);
-      }
-      return results;
-    });
+    const p = this.getData().then(
+      data => new CssSelector(data, this.options).css(pattern).getall()
+    );
     p.get = () => p.then((results) => results[0]);
     p.getall = () => p.then((results) => results);
+    p.map = fn => p.then((results) => {
+      return (results || []).map(r => fn(new CssSelector(r, this.options)));
+    });
+    p.each = fn => p.then((results) => {
+      (results || []).forEach(r => fn(new CssSelector(r, this.options)));
+    });
     return p;
-
-    function format(s, replacements) {
-      for (const repl in replacements) {
-        s = s.replace(new RegExp(repl, 'g'), (...args) => replacements[repl](...args));
-      }
-      return s;
-    }
   }
 
   regex(re, group=0) {
@@ -299,6 +320,7 @@ module.exports = class Spider {
     const context = repl.start('> ').context;
     context.spider = this;
     context.res = res;
+    context.$ = cheerio.load(res.data);
   }
 
   async save(url, filePath, options) {
@@ -307,7 +329,7 @@ module.exports = class Spider {
     // 如果是, 检查文件是部分下载还是全部下载,
     // 如果部分下载, 断点续传 (如果服务端支持的话) //TODO
     // 如果已经下载, 跳过, 不需要重新下载
-    if (await fs.exists(filePath)) {
+    if (await fs.exists(filePath) && (await fs.stat(filePath)).size >= 0) {
       return true;
     }
     let res = await this.get(url, options);
