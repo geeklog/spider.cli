@@ -36,6 +36,9 @@ exports.start = async ({asDaemon, headless}) => {
     await page.close();
     next(null, results);
   });
+  server.addHandler('status', async (req, res, next) => {
+    next(null, 'running');
+  });
   server.addHandler('screenshot', async (req, res, next) => {
     try {
       const {url, savePath} = req.m;

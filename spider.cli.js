@@ -114,12 +114,13 @@ cmdr.command('shell <url>')
       {stdio: 'inherit', shell: true}
     );
   });
-cmdr.command('daemon <start/stop/css/screenshot> [arg1] [arg2]')
+cmdr.command('daemon <start/stop/status/screenshot/css/> [arg1] [arg2]')
   .description([
     'use headless browser',
     '  start <showBrowser> - start the headless browser daemon',
     '  stop - stop the headless browser daemon',
     '  screenshot <savePath> <url> - take screenshot',
+    '  status - show status of browser',
     '  css <pattern> <url> - extract data using css selector',
     // eslint-disable-next-line quotes
     '    - ' + green("spider daemon css '.preview-card=>%html' https://www.30secondsofcode.org/js/p/1/"),
@@ -132,6 +133,11 @@ cmdr.command('daemon <start/stop/css/screenshot> [arg1] [arg2]')
     }
     if (op === 'stop') {
       await SpiderDaemon.call('shutdown');
+      return;
+    }
+    if (op === 'status') {
+      const stat = await SpiderDaemon.call('status');
+      console.log(stat);
       return;
     }
     if (op === 'screenshot') {
