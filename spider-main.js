@@ -10,7 +10,6 @@
  */
 const {spawn} = require('child_process');
 const path = require('path');
-const qrpc = require('qrpc');
 const cmdr = require('commander');
 const Spider = require(path.join(__dirname, './spider'));
 const SpiderDaemon = require('./spider.daemon');
