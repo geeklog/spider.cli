@@ -9,6 +9,7 @@
  * spider link 'https://news.ycombinator.com/news?p=[1..10]' -u -n 3 | spider link -cu -n 20 -t 1000 -r 3
  */
 const {spawn} = require('child_process');
+const {green} = require('chalk');
 const path = require('path');
 const cmdr = require('commander');
 const Spider = require(path.join(__dirname, './spider'));
@@ -116,10 +117,12 @@ cmdr.command('shell <url>')
 cmdr.command('daemon <start/stop/css/screenshot> [arg1] [arg2]')
   .description([
     'use headless browser',
-    '  start <showBrowser> - start the browser daemon',
-    '  stop - stop the browser daemon',
+    '  start <showBrowser> - start the headless browser daemon',
+    '  stop - stop the headless browser daemon',
     '  screenshot <savePath> <url> - take screenshot',
     '  css <pattern> <url> - extract data using css selector',
+    // eslint-disable-next-line quotes
+    '    - ' + green("spider daemon css '.preview-card=>%html' https://www.30secondsofcode.org/js/p/1/"),
   ].join('\n'))
   .action(async (op, arg1, arg2) => {
     if (op === 'start') {

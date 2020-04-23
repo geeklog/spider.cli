@@ -4,7 +4,7 @@
   "description": "",
   "main": "spider.js",
   "bin": {
-    "spider": "spider-main.js"
+    "spider": "spider.cli.js"
   },
   "scripts": {
     "pub-dev": "npm link"

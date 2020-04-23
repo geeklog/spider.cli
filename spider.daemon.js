@@ -69,6 +69,9 @@ exports.call = async (cmd, args) => {
   });
 }
 
+/**
+ * node spider.daemon.js -D -H
+ */
 if (!module.parent) {
   exports.start({
     asDaemon: process.argv.indexOf('-D') >= 0,
