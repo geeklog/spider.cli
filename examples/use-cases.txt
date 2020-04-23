@@ -1,6 +1,11 @@
 spider css '#hnmain tr.athing td.title a => %text : @href' 'https://news.ycombinator.com/news?p=1' --follow 'a.morelink => @href'
 
+spider img https://www.cnbeta.com/ 1 -u | spider save './cnbetaImg/%f' -n 10 -v debug
+
 spider get https://hackernoon.com/tagged/hackernoon-top-story
+
+spider daemon css '.preview-card=>%html' https://www.30secondsofcode.org/js/p/1/
+
 spider css 'main article > h2 > a' 'https://hackernoon.com/tagged/hackernoon-top-story/?page=[1..3]' -n 3
 spider css 'script#__NEXT_DATA__ => %json' https://hackernoon.com/tagged/hackernoon-top-story -c
 spider css 'script#__NEXT_DATA__ => <content/>' 'https://hackernoon.com/tagged/hackernoon-top-story/?page=[1..3]' -n 3 | jq '[.props.pageProps.headerData.subNavItems | .[] | .sections | .[] | .links] | flatten'

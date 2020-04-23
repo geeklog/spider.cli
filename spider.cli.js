@@ -68,11 +68,11 @@ cmdr.command('get [url]').alias('g')
   });
 cmdr.command('save <path> [url]')
   .description('Save resource to path')
-  .action((url, path) => {
+  .action((path, url) => {
     Spider.runForSpider(url, cmdr, async (u, spider) => {
       const filePath = spider.toSavePath(u, path);
-      await spider.save(url, filePath);
-    })
+      await spider.save(u, filePath);
+    });
   });
 cmdr.command('css <selector> [url]').alias('ext')
   .description('Apply css selector to extract content from html')

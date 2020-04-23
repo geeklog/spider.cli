@@ -3,6 +3,7 @@ const fs = require('fs-extra');
 const axios = require('axios');
 const path = require('path');
 const os = require('os');
+const stream = require('stream');
 const {uniq, flatten, isArray, isString, isJSON, isFunction} = require('lodash');
 const isStream = require('is-stream');
 const pretty = require('pretty');
@@ -42,7 +43,12 @@ const resolveURLs = async (url, expand) => {
   if (url) {
     return expand(url);
   } else {
-    const urls = flatten((await stdin()).split('\n').map(s => expand(s)));
+    const urls = flatten(
+      (await stdin())
+        .split('\n')
+        .filter(s => !!s)
+        .map(s => expand(s))
+    );
     return urls;
   }
 };
@@ -166,6 +172,9 @@ class Response {
     if (link.startsWith('http:') || link.startsWith('https:')) {
       return link;
     }
+    if (link.startsWith('//')) {
+      return 'https:' + link;
+    }
     const domain = this.url.split('/').slice(0, 3).join('/');
     return domain + '/' + link;
   }
@@ -232,26 +241,37 @@ class Response {
       }
       return links.map(l => this.fixLink(l));
     });
-    p.get = () => p.then(links => links[0]);
-    p.getall = () => p.then(links => links);
+    p.get = () => p.then(_ => _[0]);
+    p.getall = () => p.then(_ => _);
     return p;
   }
 
   images(group=0) {
-    if (group === 0) {
-      return this.css('img');
-    } else if (group === 1) {
-      return this.css('img => @src');
-    } else {
+    if (group != 0 && group != 1) {
       throw new Error('Invalid group: ' + group);
     }
+    const p = this.css('img => ' + ['%html','@src'][group]).then(imgs => {
+      if (!imgs) {
+        return [];
+      }
+      if (group == 1) {
+        return imgs.map(_ => this.fixLink(_)).filter(_ => !!_);
+      }
+    });
+    p.get = () => p.then(_ => _[0]);
+    p.getall = () => p.then(_ => _);
+    return p;
   }
 
   pipe(stream) {
-    if (!isStream(this.data)) {
+    if (!this.data && !this.res) {
+      throw new Error('Fetch Fail:' + this.url);
+    }
+    const data = this.data || this.res.data;
+    if (!isStream(data)) {
       throw new Error('Data is not a stream, can\'t be piped!');
     }
-    this.data.pipe(stream);
+    data.pipe(stream);
   }
 }
 
@@ -333,22 +353,33 @@ module.exports = class Spider {
   }
 
   async save(url, filePath, options) {
+    if (!url) {
+      throw new Error('Malform URL:'+url);
+    }
+    // this.logger.debug('Saving:', url, filePath);
     options = Object.assign({}, {stream: true, cache: false}, options);
+    // TODO
     // 检查文件是否存在
     // 如果是, 检查文件是部分下载还是全部下载,
-    // 如果部分下载, 断点续传 (如果服务端支持的话) //TODO
+    // 如果部分下载, 断点续传 (如果服务端支持的话)
     // 如果已经下载, 跳过, 不需要重新下载
-    if (await fs.exists(filePath) && (await fs.stat(filePath)).size >= 0) {
-      return true;
-    }
+    // if (await fs.exists(filePath) && (await fs.stat(filePath)).size >= 0) {
+    //   return true;
+    // }
     let res = await this.get(url, options);
     
     await fs.ensureFile(filePath);
     res.pipe(fs.createWriteStream(filePath));
+    
     try {
+      // Waiting for transmition complete, because the scheduler need this
+      // to do the rate limiting right.
       await new Promise((resolve, reject) => {
-        res.on('finish', resolve);
-        res.on('error', e => reject(e))
+        const w = new stream.Writable();
+        w._write = (chunk, encoding, done) => done();
+        w.end = resolve;
+        w.on('error', reject);
+        res.pipe(w);
       });
     } catch(err) {
       this.logger.error('Save Fail:', err.message, url, filePath);
@@ -360,6 +391,7 @@ module.exports = class Spider {
         this.save(url, filePath, options);
       }
     }
+    // this.logger.debug('Save Complete:', url, filePath);
   }
 
   async getBatch(url, check, _yield) {
@@ -502,8 +534,9 @@ module.exports = class Spider {
   toSavePath(url, filePathPattern) {
     if (filePathPattern.indexOf('%f') >= 0) {
       return filePathPattern.replace('%f', url.split('/').pop());
+    } else {
+      return filePathPattern;
     }
-    throw new Error('Invalid filePathPattern: ' + filePathPattern);
   }
 
   toFilePath(s, format='hierachy') {
