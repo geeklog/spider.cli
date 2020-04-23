@@ -113,8 +113,8 @@ class CssSelector {
     this.content = content;
     this.options = options;
     this.unescapeOrNot = s => this.options.unescape ? entities.decode(s) : s;
-    this.prettyJSONOrNot = s => this.options.format ? JSON.stringify(JSON.parse(s), null, 2) : s;
-    this.prettyHTMLOrNot = s => this.options.format ? pretty(s) : s;
+    this.prettyJSONOrNot = s => this.options.pretty ? JSON.stringify(JSON.parse(s), null, 2) : s;
+    this.prettyHTMLOrNot = s => this.options.pretty ? pretty(s) : s;
   }
   css(pattern) {
     let [selector, formatter] = pattern.split('=>').map(s => s.trim());
@@ -182,6 +182,15 @@ class Response {
       data = pretty(data);
     }
     return data;
+  }
+
+  async jq(pattern) {
+    const data = await this.getData();
+    try {
+      return JSON.parse(await JQ.run(pattern, data, { input: 'json' }));
+    } catch(err) {
+      console.error(err, data);
+    }
   }
 
   css(pattern) {
@@ -461,26 +470,17 @@ module.exports = class Spider {
     
   }
 
-  async jq(filter, dataOrCallback) {
-    if (dataOrCallback === undefined) {
-      const callback = dataOrCallback;
-      return async (data) => {
-        const res = JSON.parse(await this.JQ.run(filter, data, { input: 'json' }));
-        callback(res);
-      }
-    }
-    const data = dataOrCallback;
-    return JSON.parse(await JQ.run(filter, data, { input: 'json' }));
-  }
-  
   async axiosGetWithOptions(url, options) {
     this.logger.debug('Get', url);
+    const headers = Object.assign(
+      {},
+      { 'User-Agent': userAgents[options.userAgent || 'default'] },
+      options.headers || {}
+    );
     try {
       const res = await axios.get(url, {
         timeout: Number(options.timeout) || 30000,
-        headers: {
-          'User-Agent': userAgents[options.userAgent || 'default']
-        },
+        headers,
         responseType: options.stream ? 'stream' : undefined
       });
       return res;

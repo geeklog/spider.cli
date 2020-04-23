@@ -10,8 +10,10 @@
  */
 const {spawn} = require('child_process');
 const path = require('path');
-const Spider = require(path.join(__dirname, './spider'));
+const qrpc = require('qrpc');
 const cmdr = require('commander');
+const Spider = require(path.join(__dirname, './spider'));
+const SpiderDaemon = require('./spider.daemon');
 
 const getOptions = o => {
   const options = {};
@@ -34,7 +36,7 @@ cmdr.option('-p, --pretty', 'prettify html')
 cmdr.option('-f, --follow <linkExtractor>', 'prettify html')
 cmdr.option('-t, --timeout <millsec>', 'set fetch timeout')
 cmdr.option('-v, --log [loglevel]', 'log messages levels:debug/warn/error', 'silent')
-cmdr.option('-D, --decode-entities', 'decode html entities')
+cmdr.option('-D, --unescape', 'decode html entities')
 cmdr.option('-H, --html', 'output as html')
 cmdr.option('-A, --user-agent', 'user agent: chrome/firefox/safari')
 cmdr.option('-n, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs', 1)
@@ -111,5 +113,38 @@ cmdr.command('shell <url>')
       `node --experimental-repl-await -e '(new (require("${__dirname}/spider"))(${options})).shell("${url}")'`,
       {stdio: 'inherit', shell: true}
     );
+  });
+cmdr.command('daemon <start/stop/css/screenshot> [arg1] [arg2]')
+  .description([
+    'use headless browser',
+    '  start <showBrowser> - start the browser daemon',
+    '  stop - stop the browser daemon',
+    '  screenshot <savePath> <url> - take screenshot',
+    '  css <pattern> <url> - extract data using css selector',
+  ].join('\n'))
+  .action(async (op, arg1, arg2) => {
+    if (op === 'start') {
+      const showBrowser = !!arg1;
+      await SpiderDaemon.start({asDaemon: true, headless: !showBrowser});
+      return;
+    }
+    if (op === 'stop') {
+      await SpiderDaemon.call('shutdown');
+      return;
+    }
+    if (op === 'screenshot') {
+      const savePath = arg1;
+      const url = arg2;
+      await SpiderDaemon.call('screenshot', {url, savePath});
+      return;
+    }
+    if (op === 'css') {
+      const pattern = arg1;
+      const url = arg2;
+      const results = await SpiderDaemon.call('css', {pattern, url});
+      console.log(results);
+      return;
+    }
+    throw new Error('Invalid operation: ' + op);
   });
 cmdr.parse(process.argv);
