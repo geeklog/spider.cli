@@ -1,4 +1,5 @@
 const qrpc = require('qrpc');
+const {isURL, resolveURLs, uniqOutput, concurrently} = require('./helper');
 
 exports.start = async ({asDaemon, headless}) => {
   if (asDaemon) {
@@ -70,6 +71,24 @@ exports.call = async (cmd, args) => {
       });
     });
   });
+}
+
+exports.runForCSS = async (startUrls, pattern, options, _yield) => {
+  const urls = await resolveURLs(startUrls);
+  const output = uniqOutput(options.unique);
+  let q;
+  const fn = async u => {
+    if (!u) {
+      return;
+    }
+    const res = await exports.call('css', pattern);
+    await _yield(res, output);
+    if (options.follow) {
+      const followURL = await res.css(options.follow).get();
+      q.go(fn.bind(null, res.fixLink(followURL)));
+    }
+  }
+  q = concurrently(options.parallel, urls, fn);
 }
 
 /**

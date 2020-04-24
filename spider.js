@@ -11,71 +11,14 @@ const cheerio = require('cheerio');
 const crypto = require('crypto');
 const entities = new (require('html-entities').XmlEntities)();
 const JQ = require('node-jq');
-const concurrent = require('concurr').default;
-const stdin = require(path.join(__dirname, './stdin'));
+const {collectStream} = require('./stream');
+const {isURL, resolveURLs, uniqOutput, concurrently} = require('./helper');
 
 const userAgents = {
   chrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36',
   googlebot: 'Googlebot/2.1 (+http://www.googlebot.com/bot.html)',
   default: 'CURL'
 };
-
-function isURL(s) {
-  return s && (s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:'));
-}
-
-async function collectStream(stream) {
-  const chunks = [];
-  return new Promise((resolve, reject) => {
-    stream.on('data', chunk => {
-      chunks.push(chunk);
-    });
-    stream.on('end', () => {
-      resolve(Buffer.concat(chunks));
-    });
-    stream.on('error', (err) => {
-      reject(err);
-    });
-  });
-}
-
-const resolveURLs = async (url, expand) => {
-  if (url) {
-    return expand(url);
-  } else {
-    const urls = flatten(
-      (await stdin())
-        .split('\n')
-        .filter(s => !!s)
-        .map(s => expand(s))
-    );
-    return urls;
-  }
-};
-
-const concurrently = (n, vals, fn) => {
-  const q = concurrent(n);
-  for (const v of vals) {
-    q.go(fn.bind(null, v));
-  }
-  return q;
-};
-
-const uniqOutput = (b) => {
-  const a = new Set();
-  return (s) => {
-    if (!b) {
-      console.log(s);
-      return;
-    }
-    if (a.has(s)) {
-      return;
-    }
-    a.add(s);
-    console.log(s);
-  }
-};
-
 class Logger {
   constructor(level = 'none') {
     this.level = level;
@@ -304,19 +247,6 @@ module.exports = class Spider {
       await _yield(u, spider, output);
     }
     concurrently(options.parallel, urls, fn);
-  }
-
-  static expand(url) {
-    const range = url.match(/\[(\d+?)\.\.(\d+?)]/);
-    if (!range) {
-      return [url];
-    }
-    const [all,left,right] = range;
-    const urls = [];
-    for (let i=Number(left); i<=Number(right); i++) {
-      urls.push(url.replace(all, i));
-    }
-    return urls;
   }
 
   constructor(options = {}) {

@@ -12,7 +12,8 @@ const {spawn} = require('child_process');
 const {green} = require('chalk');
 const path = require('path');
 const cmdr = require('commander');
-const Spider = require(path.join(__dirname, './spider'));
+const { expandURL, resolveMultipe } = require('./helper');
+const Spider = require('./spider');
 const SpiderDaemon = require('./spider.daemon');
 
 const getOptions = o => {
@@ -54,7 +55,7 @@ cmdr.command('config <getset> <key> [value]')
 cmdr.command('expand <url>').alias('e')
   .description('Expands url pattern [1..100]')
   .action(url => {
-    Spider.expand(url).map(u => console.log(u))
+    expandURL(url).map(u => console.log(u))
   });
 cmdr.command('res.headers [url]')
   .description('show the response headers')
@@ -148,9 +149,11 @@ cmdr.command('daemon <start/stop/status/screenshot/css/> [arg1] [arg2]')
     }
     if (op === 'css') {
       const pattern = arg1;
-      const url = arg2;
-      const results = await SpiderDaemon.call('css', {pattern, url});
-      console.log(results);
+      const startURL = arg2;
+      resolveMultipe(startURL, cmdr, async (url, output) => {
+        (await SpiderDaemon.call('css', {pattern, url}))
+          .map(r => output(r));
+      });
       return;
     }
     throw new Error('Invalid operation: ' + op);
