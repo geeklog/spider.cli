@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const entities = new (require('html-entities').XmlEntities)();
 const JQ = require('node-jq');
 const {collectStream} = require('./stream');
-const {isURL, resolveURLs, uniqOutput, concurrently} = require('./helper');
+const {isURL, resolveURLs, uniqOutput, concurrent, concurrently} = require('./helper');
 
 const userAgents = {
   chrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36',
@@ -278,7 +278,7 @@ module.exports = class Spider {
     this.options = options;
     this.cfg = new ConfigLoader('~/.spider.cli.json');
     this.logger = new Logger(options.log);
-
+    this.jobs = {};
     this.cfg.load();
 
     if (this.options.cache === true) {
@@ -347,6 +347,13 @@ module.exports = class Spider {
       }
     }
     // this.logger.debug('Save Complete:', url, filePath);
+  }
+
+  job(id, options) {
+    if (!this.jobs[id]) {
+      this.jobs[id] = concurrent(options.concurr, options);
+    }
+    return this.jobs[id];
   }
 
   async followAll(urlOrCssPatterns, extract) {

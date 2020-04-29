@@ -41,6 +41,8 @@ exports.resolveMultipe = async (startUrls, options, _yield) => {
   exports.concurrently(options.parallel, urls, fn);
 }
 
+exports.concurrent = concurrent;
+
 exports.concurrently = (n, vals, fn) => {
   const q = concurrent(n);
   for (const v of vals) {

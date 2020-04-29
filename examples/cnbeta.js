@@ -1,7 +1,7 @@
 const Spider = require('../spider');
 const {blue, green} = require('chalk');
 
-const spider = new Spider({ cache: true, retry: 3 });
+const spider = new Spider({ cache: true, retry: 3, cookie: true });
 
 (async () => {
   let res = await spider.get('https://www.cnbeta.com');
