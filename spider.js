@@ -4,7 +4,7 @@ const axios = require('axios');
 const path = require('path');
 const os = require('os');
 const stream = require('stream');
-const {uniq, flatten, isArray, isString, isJSON, isFunction} = require('lodash');
+const {isString} = require('lodash');
 const isStream = require('is-stream');
 const pretty = require('pretty');
 const cheerio = require('cheerio');
@@ -130,13 +130,18 @@ class Response {
     this.options = options;
   }
 
-  // FIXME: normalizeLink
-  fixLink(link) {
+  normalizeLink(link) {
+    if (!link) {
+      return link;
+    }
     if (link.startsWith('http:') || link.startsWith('https:')) {
       return link;
     }
     if (link.startsWith('//')) {
       return 'https:' + link;
+    }
+    if (link.startsWith('/')) {
+      link = link.substring(1);
     }
     const domain = this.url.split('/').slice(0, 3).join('/');
     return domain + '/' + link;
@@ -202,7 +207,7 @@ class Response {
       if (!links) {
         return [];
       }
-      return links.map(l => this.fixLink(l));
+      return links.map(l => this.normalizeLink(l));
     });
     p.get = () => p.then(_ => _[0]);
     p.getall = () => p.then(_ => _);
@@ -218,7 +223,7 @@ class Response {
         return [];
       }
       if (group == 1) {
-        return imgs.map(_ => this.fixLink(_)).filter(_ => !!_);
+        return imgs.map(_ => this.normalizeLink(_)).filter(_ => !!_);
       }
     });
     p.get = () => p.then(_ => _[0]);
@@ -253,7 +258,7 @@ module.exports = class Spider {
       await _yield(res, output);
       if (options.follow) {
         const followURL = await res.css(options.follow).get();
-        followURL && q.go(fn.bind(null, res.fixLink(followURL)));
+        followURL && q.go(fn.bind(null, res.normalizeLink(followURL)));
       }
     }
     q = concurrently(options.parallel, urls, fn);
@@ -344,6 +349,32 @@ module.exports = class Spider {
     // this.logger.debug('Save Complete:', url, filePath);
   }
 
+  async followAll(urlOrCssPatterns, extract) {
+    if (!Array.isArray(urlOrCssPatterns)) {
+      throw new Error('urlOrCssPatterns must be an array');
+    }
+    const [startUrl, ...patterns] = urlOrCssPatterns;
+    let url;
+    const nextPage = async (res, patterns) => {
+      let url;
+      for (const pattern of patterns) {
+        url = await res.css(pattern).get();
+        if (url) {
+          break;
+        }
+      }
+      url = res.normalizeLink(url);
+      return url;
+    }
+    
+    let res = await this.get(startUrl);
+    await extract(res);
+    while (url = await nextPage(res, patterns)) {
+      res = await this.get(url);
+      await extract(res);
+    }
+  }
+
   async getBatch(url, check, _yield) {
     const range = url.match(/\[(\d+?)\.\.]/);
     if (!range) {
@@ -362,6 +393,12 @@ module.exports = class Spider {
   }
   
   async get(url, options = {}) {
+    if (!url) {
+      throw new Error(`URL can't not be ${url}!`);
+    }
+    if (!isString(url)) {
+      throw new Error(`URL is not a string: ${url}`);
+    }
     options = Object.assign({}, this.options, options);
     let {
       cache: useCache,

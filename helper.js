@@ -1,5 +1,5 @@
 const stdin = require('./stdin');
-const {uniq, flatten, isArray, isString, isJSON, isFunction} = require('lodash');
+const {flatten} = require('lodash');
 
 const concurrent = require('concurr').default;
 

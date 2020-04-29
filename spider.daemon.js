@@ -85,7 +85,7 @@ exports.runForCSS = async (startUrls, pattern, options, _yield) => {
     await _yield(res, output);
     if (options.follow) {
       const followURL = await res.css(options.follow).get();
-      q.go(fn.bind(null, res.fixLink(followURL)));
+      q.go(fn.bind(null, res.normalizeLink(followURL)));
     }
   }
   q = concurrently(options.parallel, urls, fn);

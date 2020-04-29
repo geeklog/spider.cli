@@ -11,15 +11,10 @@ encoding
 robots.txt
 don't follow visited page
 
-抓取豆瓣 imdb 前250 电影资料
-
-https://www.douban.com/doulist/1518270/?start=2&sort=time
-
 .doulist-item .doulist-subject => (
 	title: (div.title > a => %text => trim)
 	desc: (div.desc => %text => trim)
 )
-
 
 spider css '.doulist-item .doulist-subject > div.title > a => %text => trim' 'https://www.douban.com/doulist/1518270/?start=1&sort=time' --follow '#content > div > div.article > div.paginator > span.next > a => @href'
 
