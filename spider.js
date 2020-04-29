@@ -58,6 +58,7 @@ class ConfigLoader {
 }
 
 class CssSelector {
+
   constructor(content, options) {
     this.content = content;
     this.options = options;
@@ -65,32 +66,27 @@ class CssSelector {
     this.prettyJSONOrNot = s => this.options.pretty ? JSON.stringify(JSON.parse(s), null, 2) : s;
     this.prettyHTMLOrNot = s => this.options.pretty ? pretty(s) : s;
   }
+
   css(pattern) {
-    let [selector, formatter] = pattern.split('=>').map(s => s.trim());
-    const data = this.content;
-    if (!data) {
-      return null;
+    const formatAll = (el, formatters) => {
+      let res;
+      for (const formatter of formatters) {
+        if (formatter === 'trim') {
+          res = res.trim();
+        } else if (formatter === 'trimLines') {
+          res = res.split('\n').map(line => line.trim()).filter(line => !!line).join('\n');
+        } else {
+          res = format(formatter, {
+            '@([a-z|A-Z|0-9|-|_]+)': (_, s) => this.unescapeOrNot(el.attr(s)) || '',
+            '%html': () => this.unescapeOrNot(this.prettyHTMLOrNot($.html(el))),
+            '%text': () => this.unescapeOrNot(el.text()),
+            '%el': () => el[0],
+            '%json': () => el[0].children.map(_ => this.prettyJSONOrNot(_.data)).join('\n')
+          });
+        }
+      }
+      return res;
     }
-    const $ = cheerio.load(data);
-    const results = [];
-    if (!formatter) {
-      formatter = '%html';
-    }
-    for (const el of $(selector).toArray().map($)) {
-      const res = format(formatter, {
-        '@([a-z|A-Z|0-9|-|_]+)': (_, s) => this.unescapeOrNot(el.attr(s)) || '',
-        '%html': () => this.unescapeOrNot(this.prettyHTMLOrNot($.html(el))),
-        '%text': () => this.unescapeOrNot(el.text()),
-        '%element': () => util.format(el[0]),
-        '%json': () => el[0].children.map(_ => this.prettyJSONOrNot(_.data)).join('\n')
-      });
-      results.push(res);
-    }
-    
-    return {
-      get: () => results[0],
-      getall: () => results
-    };
 
     function format(s, replacements) {
       for (const repl in replacements) {
@@ -98,6 +94,29 @@ class CssSelector {
       }
       return s;
     }
+
+    let [selector, ...formatters] = pattern.split('=>').map(s => s.trim());
+    const data = this.content;
+    if (!data) {
+      return null;
+    }
+    const $ = cheerio.load(data);
+    const results = [];
+    if (!formatters.length) {
+      formatters = ['%html'];
+    }
+    if (selector === '%el') {
+      results.push(formatAll($($('*')[0]), formatters));
+    } else {
+      for (const el of $(selector).toArray().map($)) {
+        results.push(formatAll(el, formatters));
+      }
+    }
+    
+    return {
+      get: () => results[0],
+      getall: () => results
+    };
   }
 }
 
@@ -111,6 +130,7 @@ class Response {
     this.options = options;
   }
 
+  // FIXME: normalizeLink
   fixLink(link) {
     if (link.startsWith('http:') || link.startsWith('https:')) {
       return link;
@@ -233,7 +253,7 @@ module.exports = class Spider {
       await _yield(res, output);
       if (options.follow) {
         const followURL = await res.css(options.follow).get();
-        q.go(fn.bind(null, res.fixLink(followURL)));
+        followURL && q.go(fn.bind(null, res.fixLink(followURL)));
       }
     }
     q = concurrently(options.parallel, urls, fn);
@@ -331,7 +351,6 @@ module.exports = class Spider {
     }
     let [all, i] = range;
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const res = await this.get(url.replace(all, i));
       if (!await check(res)) {
@@ -433,12 +452,12 @@ module.exports = class Spider {
   }
 
   async axiosGetWithOptions(url, options) {
-    this.logger.debug('Get', url);
     const headers = Object.assign(
       {},
       { 'User-Agent': userAgents[options.userAgent || 'default'] },
       options.headers || {}
     );
+    this.logger.debug('Get', url);
     try {
       const res = await axios.get(url, {
         timeout: Number(options.timeout) || 30000,

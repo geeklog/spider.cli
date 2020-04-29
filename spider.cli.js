@@ -1,16 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * Spider tools for cli.
+ * Spider for command line.
  * run `spider --help` for more infomation.
- * 
- * spider css '#hnmain tr.athing td.title a => %text : @href' 'https://news.ycombinator.com/news?p=[1..10]'
- * spider css '#hnmain tr.athing td.title a => %text : @href' 'https://news.ycombinator.com/news?p=1' --follow 'a.morelink => @href'
- * spider link 'https://news.ycombinator.com/news?p=[1..10]' -u -n 3 | spider link -cu -n 20 -t 1000 -r 3
  */
 const {spawn} = require('child_process');
 const {green} = require('chalk');
-const path = require('path');
 const cmdr = require('commander');
 const { expandURL, resolveMultipe } = require('./helper');
 const Spider = require('./spider');
@@ -28,18 +23,29 @@ const getOptions = o => {
   return options;
 }
 
+const parseHeaders = desc => {
+  if (!desc) {
+    return {};
+  }
+  return desc.split('\\n').reduce((all, header) => {
+    const [k, ...vs] = header.split(':');
+    return Object.assign(all, {[k]: vs.join(':')});
+  }, {});
+}
+
 cmdr.version('0.1.0');
 cmdr.option('-c, --cache [cachePath]', 'use cache, if a cache path is specified, use that, other wise, use a path of (os tmp path + base64(url));')
 cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not specified', 86400)
 cmdr.option('-u, --unique', 'unique')
 cmdr.option('-r, --retry <times>', 'retry times')
 cmdr.option('-p, --pretty', 'prettify html')
-cmdr.option('-f, --follow <linkExtractor>', 'prettify html')
+cmdr.option('-f, --follow <linkExtractor>', 'follow link')
 cmdr.option('-t, --timeout <millsec>', 'set fetch timeout')
-cmdr.option('-v, --log [loglevel]', 'log messages levels:debug/warn/error', 'silent')
+cmdr.option('-x, --headers <headers>', 'custom headers')
+cmdr.option('--user-agent <userAgent>', 'user agent: chrome/firefox/safari')
+cmdr.option('-v, --log [loglevel]', 'log messages levels: silent/debug/warn/error', 'silent')
 cmdr.option('-D, --unescape', 'decode html entities')
-cmdr.option('-H, --html', 'output as html')
-cmdr.option('-A, --user-agent', 'user agent: chrome/firefox/safari')
+cmdr.option('-T, --html', 'wrap output in html')
 cmdr.option('-n, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs', 1)
 cmdr.command('config <getset> <key> [value]')
   .description('get or set configuration, the default configuration is store at ~/.spider.cli.json')
@@ -159,3 +165,4 @@ cmdr.command('daemon <start/stop/status/screenshot/css/> [arg1] [arg2]')
     throw new Error('Invalid operation: ' + op);
   });
 cmdr.parse(process.argv);
+cmdr.headers = parseHeaders(cmdr.headers);
