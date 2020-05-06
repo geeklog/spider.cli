@@ -15,8 +15,8 @@ spider.followAll([
     const pageLink = a.css('a => @href').get();
     spider.job('moviePage', {concurr: 5}).go(async () => {
       const pageRes = await spider.get(pageLink);
-      const summary = await pageRes.css('span[property="v:summary"] => %text => trimLines').get();
-  
+      const summary = await pageRes.css(
+        'span[property="v:summary"] => %text => trimLines').get();
       console.log(green(title));
       console.log(blue(pageLink));
       console.log(summary);

@@ -355,7 +355,7 @@ module.exports = class Spider {
     }
     return this.jobs[id];
   }
-
+  
   async followAll(urlOrCssPatterns, extract) {
     if (!Array.isArray(urlOrCssPatterns)) {
       throw new Error('urlOrCssPatterns must be an array');
