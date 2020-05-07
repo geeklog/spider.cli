@@ -3,7 +3,7 @@ const axios = require('axios');
 const path = require('path');
 const os = require('os');
 const stream = require('stream');
-const {isString} = require('lodash');
+const {isString, merge} = require('lodash');
 const isStream = require('is-stream');
 const pretty = require('pretty');
 const cheerio = require('cheerio');
@@ -321,6 +321,13 @@ module.exports = class Spider {
     // if (await fs.exists(filePath) && (await fs.stat(filePath)).size >= 0) {
     //   return true;
     // }
+    if (options.parts) {
+      const buf = await this.multipartDownload(url, Number(options.parts), options);
+      await fs.ensureFile(filePath);
+      await fs.writeFile(filePath, buf);
+      return;
+    }
+
     let res = await this.get(url, options);
 
     const totalBytes = Number(res.headers['content-length']);
@@ -516,6 +523,43 @@ module.exports = class Spider {
         return null;
       }
     }
+  }
+
+  async multipartDownload(url, nParts, options) {
+    const headers = Object.assign(
+      { 'User-Agent': userAgents[options.userAgent || 'default'] },
+      options.headers || {}
+    );
+    const fetchOptions = {
+      timeout: Number(options.timeout) || 30000,
+      headers,
+      responseType: 'stream'
+    };
+    const res = await axios.head(url, fetchOptions);
+    const totalBytes = Number(res.headers['content-length']) || 0;
+    const acceptRange = res.headers['accept-ranges'];
+    if (!totalBytes || !acceptRange || acceptRange === 'none')
+      throw new Error('Multipart download not supported');
+    
+    const bytesPerRange = Math.floor(totalBytes / nParts);
+    const ranges = [];
+    for (let i=0; i<nParts; i++) {
+      const start = i === 0 ? 0 : ranges[i-1][1] + 1;
+      const end = i === nParts-1 ? totalBytes : start + bytesPerRange;
+      ranges.push([start, end]);
+    }
+    const fetches = ranges
+      .map(([start,end]) => ({'Range': `bytes=${start}-${end}`}))
+      .map((h) => merge({headers: h}, fetchOptions))
+      .map(async opt => {
+        this.logger.debug('Get', url, opt);
+        const res = await axios.get(url, opt);
+        const data = await collectStream(res.data);
+        return data;
+      });
+    const datas = await Promise.all(fetches);
+    const buf = Buffer.concat(datas);
+    return buf;
   }
 
   toSavePath(url, filePathPattern) {

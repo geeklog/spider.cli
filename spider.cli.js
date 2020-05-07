@@ -28,6 +28,7 @@ cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not spe
 cmdr.option('-u, --unique', 'unique')
 cmdr.option('-r, --retry <times>', 'retry times')
 cmdr.option('-p, --pretty', 'prettify html')
+cmdr.option('-d, --parts <n>', 'multipart download')
 cmdr.option('-f, --follow <linkExtractor>', 'follow link')
 cmdr.option('-t, --timeout <millsec>', 'set fetch timeout')
 cmdr.option('-x, --headers <headers>', 'custom headers')
@@ -73,11 +74,11 @@ cmdr.command('save <path> [url]')
       const filePath = spider.toSavePath(u, path);
       const bar = cli.progressBar();
       bar.start();
-      await spider.save(u, filePath, {
+      await spider.save(u, filePath, Object.assign(cmdr, {
         onProgress(curr, total) {
           bar.progress(curr, total);
         }
-      });
+      }));
       bar.stop();
     });
   });
