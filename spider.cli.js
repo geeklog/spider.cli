@@ -66,7 +66,11 @@ cmdr.command('expand <url>').alias('e')
 cmdr.command('res.headers [url]')
   .description('show the response headers')
   .action(url => {
-    Spider.runForResponse(url, cmdr, (res, output) => output(res.headers))
+    Spider.runForResponse(
+      url,
+      Object.assign(cmdr, {stream: true}),
+      (res, output) => output(res.headers)
+    )
   });
 cmdr.command('get [url]').alias('g')
   .description('Get resource')

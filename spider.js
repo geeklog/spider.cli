@@ -300,7 +300,7 @@ module.exports = class Spider {
   }
 
   async shell(url) {
-    const res = await this.get(url);
+    const res = await this.get(url, {stream: true});
     const repl = require('repl');
     const context = repl.start('> ').context;
     context.spider = this;
@@ -401,11 +401,8 @@ module.exports = class Spider {
   }
   
   async get(url, options = {}) {
-    if (!url) {
-      throw new Error(`URL can't not be ${url}!`);
-    }
-    if (!isString(url)) {
-      throw new Error(`URL is not a string: ${url}`);
+    if (!isURL(url)) {
+      throw new Error(`Malform URL: ${url}`);
     }
     options = Object.assign({}, this.options, options);
     let {
@@ -415,18 +412,6 @@ module.exports = class Spider {
     } = options;
 
     cacheExpire = cacheExpire || 0;
-
-    if (!isURL(url)) {
-      console.log('not a url', url);
-      if (!await fs.pathExists(url)) {
-        return new Response({url, data: null, options});
-      }
-      return new Response({
-        url,
-        data: (await fs.readFile(url)).toString(),
-        options
-      });
-    }
 
     if (!useCache) {
       return new Response({

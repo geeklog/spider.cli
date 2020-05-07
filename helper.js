@@ -1,10 +1,10 @@
 const stdin = require('./stdin');
-const {flatten} = require('lodash');
+const {flatten, isString} = require('lodash');
 
 const concurrent = require('concurr').default;
 
 exports.isURL = function(s) {
-  return s && (s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:'));
+  return s && isString(s) && (s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:'));
 }
 
 exports.exandURL = function(url) {
