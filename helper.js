@@ -1,4 +1,4 @@
-const stdin = require('./stdin');
+const {stdin} = require('./cli');
 const {flatten, isString} = require('lodash');
 
 const concurrent = require('concurr').default;
@@ -28,7 +28,7 @@ exports.resolveURLs = async function(url) {
       (await stdin())
         .split('\n')
         .filter(s => !!s)
-        .map(s => exports.expand(s))
+        .map(s => exports.exandURL(s))
     );
     return urls;
   }

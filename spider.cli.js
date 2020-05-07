@@ -72,14 +72,21 @@ cmdr.command('save <path> [url]')
   .action((path, url) => {
     Spider.runForSpider(url, cmdr, async (u, spider) => {
       const filePath = spider.toSavePath(u, path);
-      const bar = cli.progressBar();
-      bar.start();
+      let bar;
+      if (cmdr.log === 'progress') {
+        bar = cli.progressBar();
+        bar.start();
+      }
       await spider.save(u, filePath, Object.assign(cmdr, {
         onProgress(curr, total) {
-          bar.progress(curr, total);
+          if (cmdr.log === 'progress') {
+            bar.progress(curr, total);
+          }
         }
       }));
-      bar.stop();
+      if (cmdr.log === 'progress') {
+        bar.stop();
+      }
     });
   });
 cmdr.command('css <selector> [url]').alias('ext')

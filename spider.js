@@ -563,8 +563,8 @@ module.exports = class Spider {
   }
 
   toSavePath(url, filePathPattern) {
-    if (filePathPattern.indexOf('%f') >= 0) {
-      return filePathPattern.replace('%f', url.split('/').pop());
+    if (filePathPattern.indexOf('%file') >= 0) {
+      return filePathPattern.replace('%file', url.split('/').pop());
     } else {
       return filePathPattern;
     }
