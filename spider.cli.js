@@ -133,7 +133,6 @@ cmdr.command('daemon <start/stop/status/screenshot/css/> [arg1] [arg2]')
     '  screenshot <savePath> <url> - take screenshot',
     '  status - show status of browser',
     '  css <pattern> <url> - extract data using css selector',
-    // eslint-disable-next-line quotes
     '    - ' + green("spider daemon css '.preview-card=>%html' https://www.30secondsofcode.org/js/p/1/"),
   ].join('\n'))
   .action(async (op, arg1, arg2) => {
