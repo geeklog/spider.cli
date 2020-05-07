@@ -7,21 +7,10 @@
 const {spawn} = require('child_process');
 const {green} = require('chalk');
 const cmdr = require('commander');
+const cli = require('./cli');
 const { expandURL, resolveMultipe } = require('./helper');
 const Spider = require('./spider');
 const SpiderDaemon = require('./spider.daemon');
-
-const getOptions = o => {
-  const options = {};
-  const skips = ['commands', 'options', 'Command', 'Option', 'rawArgs', 'args'];
-  for (const k of Object.keys(o)) {
-    if (skips.indexOf(k) >= 0 || k.startsWith('_')) {
-      continue;
-    }
-    options[k] = o[k];
-  }
-  return options;
-}
 
 const parseHeaders = desc => {
   if (!desc) {
@@ -82,7 +71,14 @@ cmdr.command('save <path> [url]')
   .action((path, url) => {
     Spider.runForSpider(url, cmdr, async (u, spider) => {
       const filePath = spider.toSavePath(u, path);
-      await spider.save(u, filePath);
+      const bar = cli.progressBar();
+      bar.start();
+      await spider.save(u, filePath, {
+        onProgress(curr, total) {
+          bar.progress(curr, total);
+        }
+      });
+      bar.stop();
     });
   });
 cmdr.command('css <selector> [url]').alias('ext')
@@ -119,7 +115,7 @@ cmdr.command('image <url> [extractLevel]').alias('img')
 cmdr.command('shell <url>')
   .description('interactive shell')
   .action(async (url) => {
-    const options = JSON.stringify(getOptions(cmdr));
+    const options = JSON.stringify(cli.cmdrOptions(cmdr));
     spawn(
       `node --experimental-repl-await -e '(new (require("${__dirname}/spider"))(${options})).shell("${url}")'`,
       {stdio: 'inherit', shell: true}

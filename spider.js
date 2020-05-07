@@ -1,4 +1,3 @@
-const util = require('util');
 const fs = require('fs-extra');
 const axios = require('axios');
 const path = require('path');
@@ -324,19 +323,27 @@ module.exports = class Spider {
     // }
     let res = await this.get(url, options);
 
+    const totalBytes = Number(res.headers['content-length']);
+
     await fs.ensureFile(filePath);
     res.pipe(fs.createWriteStream(filePath));
     
     try {
       // Waiting for transmition complete, because the scheduler need this
       // to do the rate limiting right.
-      await new Promise((resolve, reject) => {
+      const p = new Promise((resolve, reject) => {
         const w = new stream.Writable();
-        w._write = (chunk, encoding, done) => done();
+        let downloadedBytes = 0;
+        w._write = (chunk, encoding, next) => {
+          downloadedBytes += chunk.length;
+          options.onProgress && options.onProgress(downloadedBytes, totalBytes);
+          next();
+        }
         w.end = resolve;
         w.on('error', reject);
         res.pipe(w);
       });
+      return p;
     } catch(err) {
       this.logger.error('Save Fail:', err.message, url, filePath);
       if (options.retry > 0) {

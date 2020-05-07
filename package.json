@@ -15,6 +15,9 @@
   "dependencies": {
     "axios": "^0.19.2",
     "cheerio": "^1.0.0-rc.3",
+    "clear": "^0.1.0",
+    "cli-cursor": "^3.1.0",
+    "clui": "^0.3.6",
     "concurr": "0.0.1",
     "daemon": "^1.1.0",
     "fs-extra": "^9.0.0",
@@ -23,6 +26,7 @@
     "node-jq": "^1.11.0",
     "pregx": "^1.1.2",
     "pretty": "^2.0.0",
+    "pretty-bytes": "^5.3.0",
     "promise-async": "^0.2.0",
     "puppeteer": "^3.0.1",
     "qrpc": "^1.1.6"
