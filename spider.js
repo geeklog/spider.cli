@@ -2,15 +2,13 @@ const fs = require('fs-extra');
 const axios = require('axios');
 const path = require('path');
 const os = require('os');
-const stream = require('stream');
 const {isString, merge} = require('lodash');
-const isStream = require('is-stream');
 const pretty = require('pretty');
 const cheerio = require('cheerio');
 const crypto = require('crypto');
 const entities = new (require('html-entities').XmlEntities)();
 const JQ = require('node-jq');
-const {collectStream} = require('./stream');
+const {collectStream, monitorStream, isStream} = require('./stream');
 const {isURL, resolveURLs, uniqOutput, concurrent, concurrently} = require('./helper');
 
 const userAgents = {
@@ -338,19 +336,11 @@ module.exports = class Spider {
     try {
       // Waiting for transmition complete, because the scheduler need this
       // to do the rate limiting right.
-      const p = new Promise((resolve, reject) => {
-        const w = new stream.Writable();
-        let downloadedBytes = 0;
-        w._write = (chunk, encoding, next) => {
-          downloadedBytes += chunk.length;
+      return monitorStream(res, {
+        onProgress(downloadedBytes) {
           options.onProgress && options.onProgress(downloadedBytes, totalBytes);
-          next();
         }
-        w.end = resolve;
-        w.on('error', reject);
-        res.pipe(w);
       });
-      return p;
     } catch(err) {
       this.logger.error('Save Fail:', err.message, url, filePath);
       if (options.retry > 0) {
@@ -361,7 +351,6 @@ module.exports = class Spider {
         this.save(url, filePath, options);
       }
     }
-    // this.logger.debug('Save Complete:', url, filePath);
   }
 
   job(id, options) {
