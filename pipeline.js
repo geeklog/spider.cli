@@ -1,4 +1,3 @@
-const {flatten} = require('lodash');
 const concurrent = require('concurr');
 
 class ConccurRunner {
