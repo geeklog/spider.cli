@@ -128,6 +128,7 @@ class Response {
     this.data = data || (res ? res.data : null);
     this.headers = res ? res.headers: null;
     this.options = options;
+    this.code = res ? res.code : (data ? 200 : 404);
   }
 
   normalizeLink(link) {
@@ -308,7 +309,7 @@ module.exports = class Spider {
   }
 
   async save(url, filePath, options) {
-    if (!url) {
+    if (!isURL(url)) {
       throw new Error('Malform URL:'+url);
     }
     // this.logger.debug('Saving:', url, filePath);
@@ -322,7 +323,7 @@ module.exports = class Spider {
     //   return true;
     // }
     let res = await this.get(url, options);
-    
+
     await fs.ensureFile(filePath);
     res.pipe(fs.createWriteStream(filePath));
     
@@ -416,6 +417,7 @@ module.exports = class Spider {
     cacheExpire = cacheExpire || 0;
 
     if (!isURL(url)) {
+      console.log('not a url', url);
       if (!await fs.pathExists(url)) {
         return new Response({url, data: null, options});
       }
