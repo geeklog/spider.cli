@@ -118,13 +118,29 @@ Your can specify a follow link pattern instead of using url range:
 spider css '#hnmain tr.athing td.title a => %text : @href' 'https://news.ycombinator.com/news?p=1' --follow 'a.morelink => @href'
 ```
 
+## Save Files
+
+- `-v progress` show the download progress.
+- `-d <parts>` use multipart downloader to speed up the download.
+
+```
+spider save cat.jpg 'https://i.imgur.com/z4d4kWk.jpg'
+spider save cat.jpg 'https://i.imgur.com/z4d4kWk.jpg' -v progress
+spider save BD3A.pdf 'https://users.aalto.fi/~ave/BDA3.pdf' -d 10
+spider save BD3A.pdf 'https://users.aalto.fi/~ave/BDA3.pdf' -d 10 -v progress
+```
+
 ## Pipe
 
 Be hold! Here comes the killer feature,`spider.cli`is pipable!
 
+- Download all the images from a certain web page:
+
 ```shell
 spider img https://www.cnbeta.com/ 1 -u | spider save './cnbetaImg/%file' -n 10
 ```
+
+- Extract links from Hackernews pages ranges from 1 to 10, then visit those link and extract links inside those pages.
 
 ```shell
 spider link 'https://news.ycombinator.com/news?p=[1..10]' -u -n 3 | spider link -cu -n 20 -t 1000

@@ -17,6 +17,7 @@
     "cheerio": "^1.0.0-rc.3",
     "clear": "^0.1.0",
     "cli-cursor": "^3.1.0",
+    "cliall": "^0.2.0",
     "clui": "^0.3.6",
     "concurr": "0.0.1",
     "daemon": "^1.1.0",

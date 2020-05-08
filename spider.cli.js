@@ -70,23 +70,25 @@ cmdr.command('get [url]').alias('g')
 cmdr.command('save <path> [url]')
   .description('Save resource to path')
   .action((path, url) => {
-    Spider.runForSpider(url, cmdr, async (u, spider) => {
+    Spider.runForSpider(url, cli.cmdrOptions(cmdr), async (u, spider) => {
       const filePath = spider.toSavePath(u, path);
-      let bar;
-      if (cmdr.log === 'progress') {
-        bar = cli.progressBar();
-        bar.start();
-      }
-      await spider.save(u, filePath, Object.assign(cmdr, {
-        onProgress(curr, total) {
+      let load;
+      await spider.save(u, filePath, Object.assign(cli.cmdrOptions(cmdr), {
+        onStart(totals) {
           if (cmdr.log === 'progress') {
-            bar.progress(curr, total);
+            load = cmdr.parts
+              ? cli.multiProgressing(totals, '[=-]', 50)
+              : cli.progressing(totals, '[=-]', 50);
+          }
+        },
+        onProgress(curr, incr, i) {
+          if (cmdr.log === 'progress') {
+            cmdr.parts
+              ? load.progress(i, incr)
+              : load.progress(curr);
           }
         }
       }));
-      if (cmdr.log === 'progress') {
-        bar.stop();
-      }
     });
   });
 cmdr.command('css <selector> [url]').alias('ext')

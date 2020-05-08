@@ -10,6 +10,7 @@ const entities = new (require('html-entities').XmlEntities)();
 const JQ = require('node-jq');
 const {collectStream, monitorStream, isStream} = require('./stream');
 const {isURL, resolveURLs, uniqOutput, concurrent, concurrently} = require('./helper');
+const {multiProgressing} = require('./cli');
 
 const userAgents = {
   chrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36',
@@ -309,16 +310,10 @@ module.exports = class Spider {
     if (!isURL(url)) {
       throw new Error('Malform URL:'+url);
     }
-    // this.logger.debug('Saving:', url, filePath);
     options = Object.assign({}, {stream: true, cache: false}, options);
     // TODO
-    // 检查文件是否存在
-    // 如果是, 检查文件是部分下载还是全部下载,
-    // 如果部分下载, 断点续传 (如果服务端支持的话)
-    // 如果已经下载, 跳过, 不需要重新下载
-    // if (await fs.exists(filePath) && (await fs.stat(filePath)).size >= 0) {
-    //   return true;
-    // }
+    // 1. 断点续传
+    // 2. 多片段下载时, 使用文件缓存而不是内存缓存
     if (options.parts) {
       const buf = await this.multipartDownload(url, Number(options.parts), options);
       await fs.ensureFile(filePath);
@@ -329,6 +324,8 @@ module.exports = class Spider {
     let res = await this.get(url, options);
 
     const totalBytes = Number(res.headers['content-length']);
+
+    options.onStart && options.onStart(totalBytes);
 
     await fs.ensureFile(filePath);
     res.pipe(fs.createWriteStream(filePath));
@@ -535,17 +532,27 @@ module.exports = class Spider {
     for (let i=0; i<nParts; i++) {
       const start = i === 0 ? 0 : ranges[i-1][1] + 1;
       const end = i === nParts-1 ? totalBytes : start + bytesPerRange;
-      ranges.push([start, end]);
+      const amount = end - start;
+      ranges.push([start, end, amount]);
     }
-    const fetches = ranges
-      .map(([start,end]) => ({'Range': `bytes=${start}-${end}`}))
-      .map((h) => merge({headers: h}, fetchOptions))
-      .map(async opt => {
-        this.logger.debug('Get', url, opt);
-        const res = await axios.get(url, opt);
-        const data = await collectStream(res.data);
-        return data;
+
+    options.onStart && options.onStart(ranges.map(([_,__,total]) => total));
+
+    const fetches = ranges.map(async ([start, end], i) => {
+      const opt = merge(
+        fetchOptions, {
+          headers: {'Range': `bytes=${start}-${end}`}
+        }
+      );
+      this.logger.debug('Get', url, opt);
+      const res = await axios.get(url, opt);
+      const data = await collectStream(res.data, {
+        onProgress(curr, incr) {
+          options.onProgress && options.onProgress(curr, incr, i);
+        }
       });
+      return data;
+    });
     const datas = await Promise.all(fetches);
     const buf = Buffer.concat(datas);
     return buf;
