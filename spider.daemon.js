@@ -42,9 +42,12 @@ exports.start = async ({asDaemon, headless}) => {
   });
   server.addHandler('screenshot', async (req, res, next) => {
     try {
-      const {url, savePath} = req.m;
+      const {url, savePath, waitFor} = req.m;
       const page = await browser.newPage();
       await page.goto(url);
+      if (waitFor) {
+        await page.waitForSelector(waitFor);
+      }
       await page.screenshot({path: savePath});
       await page.close();
       next(null, 'ok');

@@ -32,6 +32,7 @@ cmdr.option('-d, --parts <n>', 'multipart download')
 cmdr.option('-f, --follow <linkExtractor>', 'follow link')
 cmdr.option('-t, --timeout <millsec>', 'set fetch timeout')
 cmdr.option('-x, --headers <headers>', 'custom headers')
+cmdr.option('-w, --wait-for <selector>', 'wait for selector')
 cmdr.option('--user-agent <userAgent>', 'user agent: chrome/firefox/safari')
 cmdr.option('-v, --log [loglevel]', 'log messages levels: silent/debug/warn/error', 'silent')
 cmdr.option('-D, --unescape', 'decode html entities')
@@ -122,6 +123,16 @@ cmdr.command('image <url> [extractLevel]').alias('img')
       (await res.images(extractLevel).getall()).map(output);
     });
   });
+cmdr.command('article <url> [options]').alias('arc')
+  .description('Extract main article from webpge')
+  .action(async (url, options) => {
+    Spider.runForResponse(url, cmdr, async (res, output) => {
+      const html = await res.getData();
+      const extractor = require('unfluff');
+      const data = extractor(html);
+      console.log(data);
+    });
+  });
 cmdr.command('shell <url>')
   .description('interactive shell')
   .action(async (url) => {
@@ -159,7 +170,7 @@ cmdr.command('daemon <start/stop/status/screenshot/css/> [arg1] [arg2]')
     if (op === 'screenshot') {
       const savePath = arg1;
       const url = arg2;
-      await SpiderDaemon.call('screenshot', {url, savePath});
+      await SpiderDaemon.call('screenshot', {url, savePath, waitFor: cmdr.waitFor});
       return;
     }
     if (op === 'css') {
