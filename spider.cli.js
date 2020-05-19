@@ -39,6 +39,7 @@ cmdr.option('-D, --unescape', 'decode html entities')
 cmdr.option('-T, --html', 'wrap output in html')
 cmdr.option('-n, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs', 1)
 cmdr.option('--normalize-links', 'Normalize links')
+cmdr.option('--remove-scripts', 'Remove scripts')
 cmdr.command('config <getset> <key> [value]')
   .description('get or set configuration, the default configuration is store at ~/.spider.cli.json')
   .action((getset, key, value) => {
