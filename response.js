@@ -81,7 +81,7 @@ class Response {
   }
 
   normalizeLink(link) {
-    return normalizeLink(this.domain, link);
+    return normalizeLink(this.url, link);
   }
 
   async getData() {
@@ -96,7 +96,7 @@ class Response {
       data = pretty(data);
     }
     if (this.options.normalizeLinks) {
-      data = normalizeAllLinksInHtml(this.domain, data);
+      data = normalizeAllLinksInHtml(this.url, data);
     }
     if (this.options.removeScripts) {
       data = removeAllTags('script', data);

@@ -23,11 +23,13 @@ exports.exandURL = function(url) {
 exports.parseURL = function(url) {
   return {
     url,
+    parts: url.split('/').slice(3).filter(Boolean),
     domain: url.split('/').slice(0, 3).join('/')
   };
 }
 
-exports.normalizeLink = function(domain, link) {
+exports.normalizeLink = function(url, link) {
+  const { domain, parts: urlParts } = exports.parseURL(url);
   if (!link) {
     return link;
   }
@@ -37,16 +39,26 @@ exports.normalizeLink = function(domain, link) {
   if (link.startsWith('//')) {
     return 'https:' + link;
   }
-  if (link.startsWith('/')) {
-    link = link.substring(1);
+  if (link.startsWith('/') || link.startsWith('..')) {
+    if (link.startsWith('/')) {
+      link = link.substring(1);
+    }
+    const linkParts = link.split('/');
+    link = linkParts.map((part, i) => 
+      part === '..' ? undefined : (
+        part == '.' ? urlParts[i] : part
+      )
+    ) .filter(Boolean)
+      .join('/');
   }
-  return domain + '/' + link;
+  const parsedLink = domain + '/' + link;
+  return parsedLink;
 }
 
-exports.normalizeAllLinksInHtml = function(domain, html) {
-  html = html.replace(/src="(.+?)"/g, (_, link) => `src="${exports.normalizeLink(domain, link)}"`);
-  html = html.replace(/src=\/(.+?) /g, (_, link) => `src="${exports.normalizeLink(domain, '/'+link)}"`);
-  html = html.replace(/href="(.+?)"/g, (_, link) => `src="${exports.normalizeLink(domain, link)}"`);
+exports.normalizeAllLinksInHtml = function(url, html) {
+  html = html.replace(/src="(.+?)"/g, (_, link) => `src="${exports.normalizeLink(url, link)}"`);
+  html = html.replace(/src=(\/.+?) /g, (_, link) => `src="${exports.normalizeLink(url, link)}"`);
+  html = html.replace(/href="(.+?)"/g, (_, link) => `src="${exports.normalizeLink(url, link)}"`);
   return html;
 }
 
@@ -66,8 +78,9 @@ exports.resolveURLs = async function(url) {
 
 exports.removeAllTags = function(tag, html) {
   return html
-    .replace(new RegExp(`<${tag}.*?>.*?</${tag}>`, 'g'), '')
-    .replace(new RegExp(`<${tag} .+?/>`, 'g'), '');
+    .replace(new RegExp(`<${tag}[\\s\\S]*?>.*?</${tag}>`, 'g'), '')
+    .replace(new RegExp(`<${tag}[\\s\\S]+?/>`, 'g'), '')
+    .replace(new RegExp(`<${tag}[\\s\\S]+?>`, 'g'), '')
 }
 
 exports.resolveMultipe = async (startUrls, options, _yield) => {
