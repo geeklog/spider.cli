@@ -64,6 +64,12 @@ exports.resolveURLs = async function(url) {
   }
 };
 
+exports.removeAllTags = function(tag, html) {
+  return html
+    .replace(new RegExp(`<${tag}.*?>.*?</${tag}>`, 'g'), '')
+    .replace(new RegExp(`<${tag} .+?/>`, 'g'), '');
+}
+
 exports.resolveMultipe = async (startUrls, options, _yield) => {
   const urls = await exports.resolveURLs(startUrls);
   const output = exports.uniqOutput(options.unique);

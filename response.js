@@ -3,7 +3,7 @@ const cheerio = require('cheerio');
 const entities = new (require('html-entities').XmlEntities)();
 const JQ = require('node-jq');
 const {collectStream, isStream} = require('./stream');
-const {parseURL, normalizeLink, normalizeAllLinksInHtml} = require('./helper');
+const {parseURL, normalizeLink, normalizeAllLinksInHtml, removeAllTags} = require('./helper');
 
 class CssSelector {
 
@@ -97,6 +97,9 @@ class Response {
     }
     if (this.options.normalizeLinks) {
       data = normalizeAllLinksInHtml(this.domain, data);
+    }
+    if (this.options.removeScripts) {
+      data = removeAllTags('script', data);
     }
     return data;
   }
