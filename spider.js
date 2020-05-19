@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const entities = new (require('html-entities').XmlEntities)();
 const JQ = require('node-jq');
 const {collectStream, monitorStream, isStream} = require('./stream');
-const {isURL, resolveURLs, uniqOutput, concurrent, concurrently} = require('./helper');
+const {isURL, parseURL, resolveURLs, normalizeLink, normalizeAllLinksInHtml, uniqOutput, concurrent, concurrently} = require('./helper');
 
 const userAgents = {
   chrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36',
@@ -121,6 +121,7 @@ class Response {
 
   constructor({url, data, res, options}) {
     this.url = url;
+    this.domain = parseURL(url).domain;
     this.res = res;
     this.data = data || (res ? res.data : null);
     this.headers = res ? res.headers: null;
@@ -129,20 +130,7 @@ class Response {
   }
 
   normalizeLink(link) {
-    if (!link) {
-      return link;
-    }
-    if (link.startsWith('http:') || link.startsWith('https:')) {
-      return link;
-    }
-    if (link.startsWith('//')) {
-      return 'https:' + link;
-    }
-    if (link.startsWith('/')) {
-      link = link.substring(1);
-    }
-    const domain = this.url.split('/').slice(0, 3).join('/');
-    return domain + '/' + link;
+    return normalizeLink(this.domain, link);
   }
 
   async getData() {
@@ -155,6 +143,9 @@ class Response {
     }
     if (this.options.prettyHTML) {
       data = pretty(data);
+    }
+    if (this.options.normalizeLinks) {
+      data = normalizeAllLinksInHtml(this.domain, data);
     }
     return data;
   }

@@ -38,13 +38,14 @@ cmdr.option('-v, --log [loglevel]', 'log messages levels: silent/debug/warn/erro
 cmdr.option('-D, --unescape', 'decode html entities')
 cmdr.option('-T, --html', 'wrap output in html')
 cmdr.option('-n, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs', 1)
+cmdr.option('--normalize-links', 'Normalize links')
 cmdr.command('config <getset> <key> [value]')
   .description('get or set configuration, the default configuration is store at ~/.spider.cli.json')
   .action((getset, key, value) => {
     if (getset === 'get') {
-      console.log(new Spider(cmdr).getConfig(key));
+      console.log(new Spider(cli.cmdrOptions(cmdr)).getConfig(key));
     } else if (getset === 'set') {
-      new Spider(cmdr).setConfig(key, value);
+      new Spider(cli.cmdrOptions(cmdr)).setConfig(key, value);
     } else {
       throw new Error('Invalid Arguments');
     }
@@ -59,14 +60,14 @@ cmdr.command('res.headers [url]')
   .action(url => {
     Spider.runForResponse(
       url,
-      Object.assign(cmdr, {stream: true}),
+      Object.assign(cli.cmdrOptions(cmdr), {stream: true}),
       (res, output) => output(res.headers)
     )
   });
 cmdr.command('get [url]').alias('g')
   .description('Get resource')
   .action(url => {
-    Spider.runForResponse(url, cmdr, async (res, output) => output(await res.getData()))
+    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => output(await res.getData()))
   });
 cmdr.command('save <path> [url]')
   .description('Save resource to path')
@@ -95,7 +96,7 @@ cmdr.command('save <path> [url]')
 cmdr.command('css <selector> [url]').alias('ext')
   .description('Apply css selector to extract content from html')
   .action(async (selector, url) => {
-    Spider.runForResponse(url, cmdr, async (res, output) => {
+    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
       const ss = await res.css(selector).getall();
       ss.map(output);
     });
@@ -103,14 +104,14 @@ cmdr.command('css <selector> [url]').alias('ext')
 cmdr.command('regex <re> [url]').alias('re')
   .description('Match RegExp from webpage')
   .action(async (re, url) => {
-    Spider.runForResponse(url, cmdr, async (res, output) => {
+    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
       (await res.regex(re).getall()).map(output);
     });
   });
 cmdr.command('link [url]').alias('l')
   .description('Extract links from webpage')
   .action(async url => {
-    Spider.runForResponse(url, cmdr, async (res, output) => {
+    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
       for (const link of await res.links().getall()) {
         output(link);
       }
@@ -119,18 +120,18 @@ cmdr.command('link [url]').alias('l')
 cmdr.command('image <url> [extractLevel]').alias('img')
   .description('Extract images from webpage')
   .action(async (url, extractLevel) => {
-    Spider.runForResponse(url, cmdr, async (res, output) => {
+    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
       (await res.images(extractLevel).getall()).map(output);
     });
   });
 cmdr.command('article <url> [options]').alias('arc')
   .description('Extract main article from webpge')
   .action(async (url, options) => {
-    Spider.runForResponse(url, cmdr, async (res, output) => {
+    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
       const html = await res.getData();
       const extractor = require('unfluff');
       const data = extractor(html);
-      console.log(data);
+      console.log(data.text);
     });
   });
 cmdr.command('shell <url>')
@@ -176,7 +177,7 @@ cmdr.command('daemon <start/stop/status/screenshot/css/> [arg1] [arg2]')
     if (op === 'css') {
       const pattern = arg1;
       const startURL = arg2;
-      resolveMultipe(startURL, cmdr, async (url, output) => {
+      resolveMultipe(startURL, cli.cmdrOptions(cmdr), async (url, output) => {
         (await SpiderDaemon.call('css', {pattern, url}))
           .map(r => output(r));
       });

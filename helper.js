@@ -20,6 +20,36 @@ exports.exandURL = function(url) {
   return urls;
 }
 
+exports.parseURL = function(url) {
+  return {
+    url,
+    domain: url.split('/').slice(0, 3).join('/')
+  };
+}
+
+exports.normalizeLink = function(domain, link) {
+  if (!link) {
+    return link;
+  }
+  if (link.startsWith('http:') || link.startsWith('https:')) {
+    return link;
+  }
+  if (link.startsWith('//')) {
+    return 'https:' + link;
+  }
+  if (link.startsWith('/')) {
+    link = link.substring(1);
+  }
+  return domain + '/' + link;
+}
+
+exports.normalizeAllLinksInHtml = function(domain, html) {
+  html = html.replace(/src="(.+?)"/g, (_, link) => `src="${exports.normalizeLink(domain, link)}"`);
+  html = html.replace(/src=\/(.+?) /g, (_, link) => `src="${exports.normalizeLink(domain, '/'+link)}"`);
+  html = html.replace(/href="(.+?)"/g, (_, link) => `src="${exports.normalizeLink(domain, link)}"`);
+  return html;
+}
+
 exports.resolveURLs = async function(url) {
   if (url) {
     return exports.exandURL(url);
