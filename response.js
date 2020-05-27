@@ -92,14 +92,43 @@ class Response {
     if (isStream(data)) {
       data = await collectStream(data);
     }
-    if (this.options.prettyHTML) {
-      data = pretty(data);
+    if (this.options.pretty || this.options.removeScripts) {
+      const $ = cheerio.load(data);
+      $('script').remove();
+      data = $.html();
     }
-    if (this.options.normalizeLinks) {
+    if (this.options.pretty || this.options.removeStyles) {
+      const $ = cheerio.load(data);
+      $('style').remove();
+      data = $.html();
+    }
+    if (this.options.pretty || this.options.removeComments) {
+      const $ = cheerio.load(data);
+      $('*')
+        .filter(function() { return this.type === 'comment'; })
+        .remove();
+      data = $.root().html();
+    }
+    if (this.options.pretty || this.options.removeAttributes) {
+      const $ = cheerio.load(data);
+      const exclusive = ['href', 'src', 'title', 'id'];
+      $('*').each(function() {
+        for (let key of Object.keys(this.attribs)) {
+          if (!exclusive.includes(key)) {
+            delete this.attribs[key];
+          }
+        }
+      });
+      data = $.html();
+    }
+    if (this.options.pretty || this.options.normalizeLinks) {
       data = normalizeAllLinksInHtml(this.url, data);
     }
-    if (this.options.removeScripts) {
-      data = removeAllTags('script', data);
+    if (this.options.pretty || this.options.formatHtml) {
+      data = pretty(data);
+    }
+    if (this.options.pretty || this.options.removeEmptyLines) {
+      data = data.split('\n').filter(s => !!s.trim()).join('\n');
     }
     return data;
   }
