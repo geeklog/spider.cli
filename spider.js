@@ -298,11 +298,14 @@ module.exports = class Spider {
       { 'User-Agent': userAgents[options.userAgent || 'default'] },
       options.headers || {}
     );
+    const https = require('https');
+    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
     this.logger.debug('Get', url);
     try {
       const res = await axios.get(url, {
         timeout: Number(options.timeout) || 30000,
         headers,
+        httpsAgent,
         responseType: options.stream ? 'stream' : undefined
       });
       return res;
