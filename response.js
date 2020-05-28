@@ -97,6 +97,11 @@ class Response {
       $('script').remove();
       data = $.html();
     }
+    if (this.options.pretty || this.options.removeHeads) {
+      const $ = cheerio.load(data);
+      $('head').remove();
+      data = $.html();
+    }
     if (this.options.pretty || this.options.removeStyles) {
       const $ = cheerio.load(data);
       $('style').remove();
