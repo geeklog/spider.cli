@@ -1,6 +1,6 @@
 const pretty = require('pretty');
 const cheerio = require('cheerio');
-const entities = new (require('html-entities').XmlEntities)();
+const entities = require('entities');
 const JQ = require('node-jq');
 const {collectStream, isStream} = require('./stream');
 const {parseURL, normalizeLink, normalizeAllLinksInHtml, removeAllTags} = require('./helper');
@@ -10,7 +10,7 @@ class CssSelector {
   constructor(content, options) {
     this.content = content;
     this.options = options;
-    this.unescapeOrNot = s => this.options.unescape ? entities.decode(s) : s;
+    this.unescapeOrNot = s => this.options.unescape ? entities.decodeHTML(s) : s;
     this.prettyJSONOrNot = s => this.options.pretty ? JSON.stringify(JSON.parse(s), null, 2) : s;
     this.prettyHTMLOrNot = s => this.options.pretty ? pretty(s) : s;
   }
@@ -128,6 +128,9 @@ class Response {
     }
     if (this.options.pretty || this.options.normalizeLinks) {
       data = normalizeAllLinksInHtml(this.url, data);
+    }
+    if (this.options.pretty || this.options.decodeEntities) {
+      data = entities.decodeHTML(data);
     }
     if (this.options.pretty || this.options.formatHtml) {
       data = pretty(data);

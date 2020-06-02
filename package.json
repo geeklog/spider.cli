@@ -21,6 +21,7 @@
     "clui": "^0.3.6",
     "concurr": "0.0.1",
     "daemon": "^1.1.0",
+    "entities": "^2.0.2",
     "fs-extra": "^9.0.0",
     "html-entities": "^1.2.1",
     "lodash": "^4.17.15",
