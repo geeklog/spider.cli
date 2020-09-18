@@ -19,7 +19,7 @@
     "cli-cursor": "^3.1.0",
     "cliall": "^0.2.0",
     "clui": "^0.3.6",
-    "concurr": "0.0.1",
+    "concurr": "^1.0.0",
     "daemon": "^1.1.0",
     "entities": "^2.0.2",
     "fs-extra": "^9.0.0",

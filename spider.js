@@ -64,13 +64,16 @@ module.exports = class Spider {
         return;
       }
       const res = await spider.get(u);
+      return [u, res];
+    }
+    q = concurrently(options.parallel, urls, fn);
+    q.one(async ([u, res]) => {
       await _yield(res, output);
       if (options.follow) {
         const followURL = await res.css(options.follow).get();
         followURL && q.go(fn.bind(null, res.normalizeLink(followURL)));
       }
-    }
-    q = concurrently(options.parallel, urls, fn);
+    })
   }
 
   static async runForSpider(startUrls, options, _yield) {
