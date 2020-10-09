@@ -153,7 +153,6 @@ export class Response {
       data = $.html();
     }
     if (this.options.pretty || this.options.normalizeLinks) {
-      console.error('normalizeLinks', this.url);
       data = normalizeAllLinksInHtml(this.url, data);
     }
     if (this.options.pretty || this.options.decodeEntities) {
