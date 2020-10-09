@@ -51,10 +51,10 @@ spider get 'https://example.com' -c '~/.cache'
 
 ## Get links inside pages
 
-- `-u` make sure the returned result is unique.
+- `-i` make sure the returned result is unique.
 - `-n <parallal>` the number of requests that can be run at the same time.
 ```bash
-spider link 'https://news.ycombinator.com/news?p=[1..10]' -u -n 3
+spider link 'https://news.ycombinator.com/news?p=[1..10]' -i -n 3
 ```
 
 ## Get images inside pages
@@ -137,20 +137,20 @@ Be hold! Here comes the killer feature,`spider.cli`is pipable!
 - Download all the images from a certain web page:
 
 ```shell
-spider img https://www.cnbeta.com/ 1 -u | spider save './cnbetaImg/%file' -n 10
+spider img https://www.cnbeta.com/ 1 -i | spider save './cnbetaImg/%file' -n 10
 ```
 
 - Extract links from Hackernews pages ranges from 1 to 10, then visit those link and extract links inside those pages.
 
 ```shell
-spider link 'https://news.ycombinator.com/news?p=[1..10]' -u -n 3 | spider link -cu -n 20 -t 1000
+spider link 'https://news.ycombinator.com/news?p=[1..10]' -i -n 3 | spider link -cu -n 20 -t 1000
 ```
 
 ## Headless Browser
 
 With those evasive react-orientive web development, it getting annoying for the spider industry, but luckily for us, there's a new dimension, a new era of automation, here we embrace the headless browser, a heavy artillery that ends the crawl war for good (use puppeteer internally).
 
-###Start a headless browser daemon
+### Start a headless browser daemon
 
 ```shell
 spider daemon start

@@ -17,7 +17,7 @@ module.exports = class Spider {
 
   static async runForResponse(startUrls, options, _yield) {
     const spider = new Spider(options);
-    const urls = await resolveURLs(startUrls, Spider.expand);
+    const urls = await resolveURLs(startUrls);
     const output = uniqOutput(options.unique);
     let q;
     const fn = async u => {
@@ -39,7 +39,7 @@ module.exports = class Spider {
 
   static async runForSpider(startUrls, options, _yield) {
     const spider = new Spider(options);
-    const urls = await resolveURLs(startUrls, Spider.expand);
+    const urls = await resolveURLs(startUrls);
     const output = uniqOutput(options.unique);
     const fn = async u => {
       await _yield(u, spider, output);
