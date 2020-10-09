@@ -1,5 +1,13 @@
 ## Installation
 
+### Build from local
+
+```shell
+npm i
+npm run build && npm run pub-dev
+```
+
+### Install from NPM
 ```shell
 npm i -g spider.cli
 ```
