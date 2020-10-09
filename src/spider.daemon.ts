@@ -11,8 +11,6 @@ export const start = async ({asDaemon, headless}) => {
 
   server.addHandler('css', async (req, res, next) => {
     const {pattern, url} = req.m;
-    console.log('pattern', pattern);
-    console.log('url', url);
     const page = await browser.newPage();
     await page.goto(url);
     const [selector, format] = pattern.split('=>');

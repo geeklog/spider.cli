@@ -92,7 +92,6 @@ export const resolveMultipe = async (startUrls, options, _yield) => {
 }
 
 export const concurrently = (n, vals, fn) => {
-  console.log('concurrently');
   const q = concurrent(n, {preserveOrder: true});
   for (const v of vals) {
     q.go(fn.bind(null, v));

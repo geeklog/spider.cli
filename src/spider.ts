@@ -35,15 +35,11 @@ export default class Spider {
       if (!u) {
         return;
       }
-      console.log(`spider.get ${u}`);
       const res = await spider.get(u);
-      console.log(`spider.res`, res);
       return [u, res];
     }
-    console.log('options.parallel', options.parallel);
     q = concurrently(options.parallel, urls, fn);
     q.one(async ([u, res]) => {
-      console.log('q.one')
       await _yield(res, output);
       if (options.follow) {
         const followURL = await res.css(options.follow).get();
