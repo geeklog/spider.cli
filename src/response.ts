@@ -1,13 +1,25 @@
-const pretty = require('pretty');
-const cheerio = require('cheerio');
-const entities = require('entities');
-const JQ = require('node-jq');
-const {collectStream, isStream} = require('./stream');
-const {parseURL, normalizeLink, normalizeAllLinksInHtml, removeAllTags} = require('./helper');
+import pretty from 'pretty';
+import cheerio from 'cheerio';
+import entities from 'entities';
+import JQ from 'node-jq';
+import { collectStream, isStream } from './stream';
+import { parseURL, normalizeLink, normalizeAllLinksInHtml, removeAllTags } from './helper';
 
-class CssSelector {
+export class CssSelector {
+  data(data: any): any {
+    throw new Error('Method not implemented.');
+  }
+  pipe(arg0: any) {
+    throw new Error('Method not implemented.');
+  }
+  content: any;
+  options: any;
+  unescapeOrNot: (s: any) => any;
+  prettyJSONOrNot: (s: any) => any;
+  prettyHTMLOrNot: (s: any) => any;
+  headers: any;
 
-  constructor(content, options) {
+  constructor(content?: any, options?: any) {
     this.content = content;
     this.options = options;
     this.unescapeOrNot = s => this.options.unescape ? entities.decodeHTML(s) : s;
@@ -68,9 +80,23 @@ class CssSelector {
   }
 }
 
-class Response {
+export type ResponseConfig = {
+  url: string;
+  data?: any;
+  res?: any;
+  options?: any;
+}
 
-  constructor({url, data, res, options}) {
+export class Response {
+  url: any;
+  domain: any;
+  res: any;
+  data: any;
+  headers: any;
+  options: any;
+  code: any;
+
+  constructor({url, data, res, options}: ResponseConfig) {
     this.url = url;
     this.domain = parseURL(url).domain;
     this.res = res;
@@ -144,7 +170,7 @@ class Response {
   async jq(pattern) {
     const data = await this.getData();
     try {
-      return JSON.parse(await JQ.run(pattern, data, { input: 'json' }));
+      return JSON.parse((await JQ.run(pattern, data)) as any);
     } catch(err) {
       console.error(err, data);
     }
@@ -160,7 +186,7 @@ class Response {
           console.error('NODATA', this.url, JSON.stringify(data));
         }
       }
-    );
+    ) as any;
     p.get = () => p.then((results) => results[0]);
     p.getall = () => p.then((results) => results || []);
     p.map = fn => p.then((results) => {
@@ -183,7 +209,7 @@ class Response {
         output.push(matches[group]);
       }
       return output;
-    });
+    }) as any;
     p.get = () => p.then((results) => results ? results[0] : null);
     p.getall = () => p.then((results) => results ? results : []);
     return p;
@@ -229,5 +255,3 @@ class Response {
     data.pipe(stream);
   }
 }
-
-module.exports = Response;

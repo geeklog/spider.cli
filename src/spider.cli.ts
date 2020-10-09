@@ -4,13 +4,14 @@
  * Spider for command line.
  * run `spider --help` for more infomation.
  */
-const {spawn} = require('child_process');
-const {green} = require('chalk');
-const cmdr = require('commander');
-const cli = require('./cli');
-const { expandURL, resolveMultipe } = require('./helper');
-const Spider = require('./spider');
-const SpiderDaemon = require('./spider.daemon');
+import { EventEmitter } from 'events';
+import { spawn } from 'child_process';
+import chalk from 'chalk';
+import cmdr from 'commander';
+import * as cli from './cli';
+import { expandURL, resolveMultipe } from './helper';
+import Spider from './spider';
+import * as SpiderDaemon from './spider.daemon';
 
 const parseHeaders = desc => {
   if (!desc) {
@@ -21,10 +22,9 @@ const parseHeaders = desc => {
     return Object.assign(all, {[k]: vs.join(':')});
   }, {});
 }
-
 cmdr.version('0.1.0');
 cmdr.option('-c, --cache [cachePath]', 'use cache, if a cache path is specified, use that, other wise, use a path of (os tmp path + base64(url));')
-cmdr.option('-e --expire [expireTime]', 'default expire time is 1day, if not specified', 86400)
+cmdr.option('-e, --expire [expireTime]', 'default expire time is 1day, if not specified', (value, prev) => prev, 86400000)
 cmdr.option('-i, --unique', 'unique')
 cmdr.option('-r, --retry <times>', 'retry times')
 cmdr.option('-d, --parts <n>', 'multipart download')
@@ -35,7 +35,7 @@ cmdr.option('-x, --headers <headers>', 'custom headers')
 cmdr.option('-u, --user-agent <userAgent>', 'user agent: chrome/firefox/safari')
 cmdr.option('-v, --log [loglevel]', 'log messages levels: silent/debug/warn/error', 'debug')
 cmdr.option('-D, --unescape', 'decode html entities')
-cmdr.option('-n, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs', 1)
+cmdr.option('-n, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs', (value, prev) => prev, 1)
 cmdr.option('--normalize-links', 'Normalize links, make the links start with http://www.domain etc')
 cmdr.option('--remove-scripts', 'Remove scripts from the html')
 cmdr.option('--remove-empty-lines', 'Remove empty lines from the html')
@@ -157,7 +157,7 @@ cmdr.command('daemon <start/stop/status/screenshot/css/> [arg1] [arg2]')
     '  screenshot <savePath> <url> - take screenshot',
     '  status - show status of browser',
     '  css <pattern> <url> - extract data using css selector',
-    '    - ' + green("spider daemon css '.preview-card=>%html' https://www.30secondsofcode.org/js/p/1/"),
+    '    - ' + chalk.green("spider daemon css '.preview-card=>%html' https://www.30secondsofcode.org/js/p/1/"),
   ].join('\n'))
   .action(async (op, arg1, arg2) => {
     if (op === 'start') {

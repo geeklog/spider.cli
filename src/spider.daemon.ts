@@ -1,7 +1,7 @@
-const qrpc = require('qrpc');
-const {isURL, resolveURLs, uniqOutput, concurrently} = require('./helper');
+import qrpc from 'qrpc';
+import { resolveURLs, uniqOutput, concurrently } from './helper';
 
-exports.start = async ({asDaemon, headless}) => {
+export const start = async ({asDaemon, headless}) => {
   if (asDaemon) {
     require('daemon')({cwd: process.cwd()});
   }
@@ -65,10 +65,10 @@ exports.start = async ({asDaemon, headless}) => {
   });
 }
 
-exports.call = async (cmd, args) => {
+export const call = async (cmd, args = {}): Promise<any> => {
   return new Promise((resolve, reject) => {
     const client = qrpc.connect(1337, 'localhost', () => {
-      client.call(cmd, args || {}, function(err, ret) {
+      client.call(cmd, args, function(err, ret) {
         client.close();
         err ? reject(err) : resolve(ret);
       });
@@ -76,7 +76,7 @@ exports.call = async (cmd, args) => {
   });
 }
 
-exports.runForCSS = async (startUrls, pattern, options, _yield) => {
+export const runForCSS = async (startUrls, pattern, options, _yield) => {
   const urls = await resolveURLs(startUrls);
   const output = uniqOutput(options.unique);
   let q;
@@ -84,7 +84,7 @@ exports.runForCSS = async (startUrls, pattern, options, _yield) => {
     if (!u) {
       return;
     }
-    const res = await exports.call('css', pattern);
+    const res = await call('css', pattern);
     await _yield(res, output);
     if (options.follow) {
       const followURL = await res.css(options.follow).get();
@@ -98,7 +98,7 @@ exports.runForCSS = async (startUrls, pattern, options, _yield) => {
  * node spider.daemon.js -D -H
  */
 if (!module.parent) {
-  exports.start({
+  start({
     asDaemon: process.argv.indexOf('-D') >= 0,
     headless: process.argv.indexOf('H') >= 0
   });

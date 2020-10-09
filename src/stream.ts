@@ -1,12 +1,18 @@
+import stream from 'stream';
+import is_stream from 'is-stream';
 
-const stream = require('stream');
+export const isStream = is_stream;
 
-exports.isStream = require('is-stream');
+type StreamMonitor = {
+  onProgress?: (progress: number, totalLength: number) => void;
+  onDone?: () => void;
+  onError?: (error: Error) => void;
+};
 
 /**
  * Actively pull the stream to collect data.
  */
-exports.collectStream = async function(stream, options = {}) {
+export const collectStream = async function(stream, options: StreamMonitor = {}): Promise<Buffer> {
   const chunks = [];
   let progress = 0;
   return new Promise((resolve, reject) => {
@@ -30,7 +36,7 @@ exports.collectStream = async function(stream, options = {}) {
  * Monitor the progress of stream transmission,
  * but not actively pull the stream.
  */
-exports.monitorStream = async function(source, options = {}) {
+export const monitorStream = async function(source, options: StreamMonitor = {}) {
   return new Promise((resolve, reject) => {
     const w = new stream.Writable();
     let progress = 0;

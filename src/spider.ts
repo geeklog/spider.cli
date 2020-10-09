@@ -1,19 +1,30 @@
-const fs = require('fs-extra');
-const axios = require('axios');
-const path = require('path');
-const os = require('os');
-const {isString, merge} = require('lodash');
-const cheerio = require('cheerio');
-const crypto = require('crypto');
-const { SocksProxyAgent } = require('socks-proxy-agent');
-const {collectStream, monitorStream} = require('./stream');
-const {isURL, resolveURLs, uniqOutput, concurrent, concurrently} = require('./helper');
-const Response = require('./response');
-const Logger = require('./logger');
-const userAgents = require('./useragent');
-const ConfigLoader = require('./config');
+import fs from 'fs-extra';
+import axios, {ResponseType} from 'axios';
+import path from 'path';
+import os from 'os';
+import { isString, merge } from 'lodash';
+import cheerio from 'cheerio';
+import crypto from 'crypto';
+import { SocksProxyAgent } from 'socks-proxy-agent';
+import { collectStream, monitorStream } from './stream';
+import { isURL, resolveURLs, uniqOutput, concurrent, concurrently } from './helper';
+import { Response } from './response';
+import Logger from './logger';
+import userAgents from './useragent';
+import ConfigLoader from './config';
 
-module.exports = class Spider {
+export type SpiderOption = {
+  cache?: string,
+  stream?: boolean,
+  expire?: number
+}
+
+export default class Spider {
+
+  options: any;
+  cfg: ConfigLoader;
+  logger: Logger;
+  jobs: {};
 
   static async runForResponse(startUrls, options, _yield) {
     const spider = new Spider(options);
@@ -24,11 +35,15 @@ module.exports = class Spider {
       if (!u) {
         return;
       }
+      console.log(`spider.get ${u}`);
       const res = await spider.get(u);
+      console.log(`spider.res`, res);
       return [u, res];
     }
+    console.log('options.parallel', options.parallel);
     q = concurrently(options.parallel, urls, fn);
     q.one(async ([u, res]) => {
+      console.log('q.one')
       await _yield(res, output);
       if (options.follow) {
         const followURL = await res.css(options.follow).get();
@@ -47,7 +62,7 @@ module.exports = class Spider {
     concurrently(options.parallel, urls, fn);
   }
 
-  constructor(options = {}) {
+  constructor(options: any = {}) {
     this.options = options;
     this.cfg = new ConfigLoader('~/.spider.cli.json');
     this.logger = new Logger(options.log);
@@ -162,7 +177,7 @@ module.exports = class Spider {
     }
   }
   
-  async get(url, options = {}) {
+  async get(url: string, options: SpiderOption = {}) {
     if (!isURL(url)) {
       throw new Error(`Malform URL: ${url}`);
     }
@@ -261,8 +276,6 @@ module.exports = class Spider {
       httpsAgent = new SocksProxyAgent({
         host,
         port,
-        protocol: 'socks5:',
-        rejectUnauthorized: false
       });
       this.logger.debug('Using socks5 proxy:', proxyStr);
     }
@@ -297,7 +310,7 @@ module.exports = class Spider {
     const fetchOptions = {
       timeout: Number(options.timeout) || 30000,
       headers,
-      responseType: 'stream'
+      responseType: 'stream' as ResponseType
     };
     const res = await axios.head(url, fetchOptions);
     const totalBytes = Number(res.headers['content-length']) || 0;

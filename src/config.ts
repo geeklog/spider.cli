@@ -1,9 +1,11 @@
-const os = require('os');
-const fs = require('fs-extra');
+import os from 'os';
+import fs from 'fs-extra';
 
-class ConfigLoader {
+export default class ConfigLoader {
+  path: string;
+  data: { __disables: {}; };
 
-  constructor(path) {
+  constructor(path: string) {
     this.path = path = path.replace('~', os.homedir());
     this.data = {
       __disables: {}
@@ -24,7 +26,7 @@ class ConfigLoader {
     fs.writeFileSync(this.path, JSON.stringify(this.data, null, 2));
   }
 
-  get(key) {
+  get(key: string) {
     if (key === '*') {
       let dup = {};
       for (let k in this.data) {
@@ -40,12 +42,12 @@ class ConfigLoader {
     return this.data[key];
   }
 
-  set(key, value) {
+  set(key: string, value: any) {
     this.data[key] = value;
     this.save();
   }
 
-  toggle(key, enable) {
+  toggle(key: string, enable: boolean) {
     if (enable) {
       delete this.data.__disables[key];
     } else {
@@ -54,5 +56,3 @@ class ConfigLoader {
     this.save();
   }
 }
-
-module.exports = ConfigLoader;

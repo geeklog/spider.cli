@@ -1,15 +1,6 @@
+export { progressing, multi_progressing as multiProgressing } from 'cliall/loading';
 
-const clui = require('clui');
-const clear = require('clear');
-const prettyBytes = require('pretty-bytes');
-const cliCursor = require('cli-cursor');
-const {multi_progressing, progressing} = require('cliall/loading');
-
-exports.multiProgressing = multi_progressing;
-
-exports.progressing = progressing;
-
-exports.cmdrOptions = o => {
+export const cmdrOptions = o => {
   const options = {};
   const skips = ['commands', 'options', 'Command', 'Option', 'rawArgs', 'args'];
   for (const k of Object.keys(o)) {
@@ -21,7 +12,7 @@ exports.cmdrOptions = o => {
   return options;
 }
 
-exports.stdin = async function() {
+export const stdin = async function(): Promise<string> {
   return new Promise((resolve, reject) => {
     process.stdin.on('error', (err) => {
       reject(err);

@@ -1,13 +1,14 @@
-const {stdin} = require('./cli');
-const {flatten, isString} = require('lodash');
+import { stdin } from './cli';
+import { flatten, isString } from 'lodash';
+import concurr from 'concurr';
 
-const concurrent = require('concurr').default;
+export const concurrent = concurr;
 
-exports.isURL = function(s) {
+export const isURL = function(s: string) {
   return s && isString(s) && (s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:'));
 }
 
-exports.exandURL = function(url) {
+export const expandURL = function(url: string) {
   const range = url.match(/\[(\d+?)\.\.(\d+?)]/);
   if (!range) {
     return [url];
@@ -15,12 +16,12 @@ exports.exandURL = function(url) {
   const [all,left,right] = range;
   const urls = [];
   for (let i=Number(left); i<=Number(right); i++) {
-    urls.push(url.replace(all, i));
+    urls.push(url.replace(all, `${i}`));
   }
   return urls;
 }
 
-exports.parseURL = function(url) {
+export const parseURL = function(url) {
   return {
     url,
     parts: url.split('/').slice(3).filter(Boolean),
@@ -28,8 +29,8 @@ exports.parseURL = function(url) {
   };
 }
 
-exports.normalizeLink = function(url, link) {
-  const { domain, parts: urlParts } = exports.parseURL(url);
+export const normalizeLink = function(url, link) {
+  const { domain, parts: urlParts } = parseURL(url);
   if (!link) {
     return link;
   }
@@ -55,44 +56,43 @@ exports.normalizeLink = function(url, link) {
   return parsedLink;
 }
 
-exports.normalizeAllLinksInHtml = function(url, html) {
-  html = html.replace(/src="(.+?)"/g, (_, link) => `src="${exports.normalizeLink(url, link)}"`);
-  html = html.replace(/src=(\/.+?) /g, (_, link) => `src="${exports.normalizeLink(url, link)}"`);
-  html = html.replace(/href="(.+?)"/g, (_, link) => `src="${exports.normalizeLink(url, link)}"`);
+export const normalizeAllLinksInHtml = function(url, html) {
+  html = html.replace(/src="(.+?)"/g, (_, link) => `src="${normalizeLink(url, link)}"`);
+  html = html.replace(/src=(\/.+?) /g, (_, link) => `src="${normalizeLink(url, link)}"`);
+  html = html.replace(/href="(.+?)"/g, (_, link) => `src="${normalizeLink(url, link)}"`);
   return html;
 }
 
-exports.resolveURLs = async function(url) {
+export const resolveURLs = async function(url: string) {
   if (url) {
-    return exports.exandURL(url);
+    return expandURL(url);
   } else {
     const urls = flatten(
       (await stdin())
         .split('\n')
         .filter(s => !!s)
-        .map(s => exports.exandURL(s))
+        .map(s => expandURL(s))
     );
     return urls;
   }
 };
 
-exports.removeAllTags = function(tag, html) {
+export const removeAllTags = function(tag, html) {
   return html
     .replace(new RegExp(`<${tag}[\\s\\S]*?>.*?</${tag}>`, 'g'), '')
     .replace(new RegExp(`<${tag}[\\s\\S]+?/>`, 'g'), '')
     .replace(new RegExp(`<${tag}[\\s\\S]+?>`, 'g'), '')
 }
 
-exports.resolveMultipe = async (startUrls, options, _yield) => {
-  const urls = await exports.resolveURLs(startUrls);
-  const output = exports.uniqOutput(options.unique);
+export const resolveMultipe = async (startUrls, options, _yield) => {
+  const urls = await resolveURLs(startUrls);
+  const output = uniqOutput(options.unique);
   const fn = async u => await _yield(u, output);
-  exports.concurrently(options.parallel, urls, fn);
+  concurrently(options.parallel, urls, fn);
 }
 
-exports.concurrent = concurrent;
-
-exports.concurrently = (n, vals, fn) => {
+export const concurrently = (n, vals, fn) => {
+  console.log('concurrently');
   const q = concurrent(n, {preserveOrder: true});
   for (const v of vals) {
     q.go(fn.bind(null, v));
@@ -100,7 +100,7 @@ exports.concurrently = (n, vals, fn) => {
   return q;
 };
 
-exports.uniqOutput = (b) => {
+export const uniqOutput = (b) => {
   const a = new Set();
   return (s) => {
     if (!b) {

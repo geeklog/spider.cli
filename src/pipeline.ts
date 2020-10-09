@@ -1,13 +1,18 @@
-const concurrent = require('concurr');
+import concurrent from 'concurr';
 
 class ConccurRunner {
+  fn: any;
+  concurr: any;
+  flatten: any;
+  all: any;
+  q: any;
 
   constructor({fn, concurr, flatten, all}) {
     this.fn = fn;
     this.concurr = concurr;
     this.flatten = flatten;
     this.all = all;
-    this.q = concurrent.default(concurr);
+    this.q = concurrent(concurr);
     if (fn.onProgress) {
       this.q.one(fn.onProgress);
     }
@@ -41,7 +46,8 @@ class ConccurRunner {
 
 }
 
-module.exports = class Pipeline {
+export default class Pipeline {
+  pipeline: any[];
 
   constructor() {
     this.pipeline = [];
@@ -51,7 +57,8 @@ module.exports = class Pipeline {
     this.pipeline.push(new ConccurRunner({
       fn,
       concurr,
-      all: this.pipeline
+      all: this.pipeline,
+      flatten: false
     }));
     return this;
   }
@@ -70,6 +77,7 @@ module.exports = class Pipeline {
     this.pipeline.unshift(new ConccurRunner({
       fn,
       concurr,
+      flatten: false,
       all: this.pipeline
     }));
     setTimeout(() => {
