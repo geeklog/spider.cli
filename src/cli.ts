@@ -2,7 +2,7 @@ export { progressing, multi_progressing as multiProgressing } from 'cliall/loadi
 
 export const cmdrOptions = o => {
   const options = {};
-  const skips = ['commands', 'options', 'Command', 'Option', 'rawArgs', 'args'];
+  const skips = ['parent', 'domain', 'commands', 'program', 'options', 'Command', 'Option', 'rawArgs', 'args', 'CommanderError'];
   for (const k of Object.keys(o)) {
     if (skips.indexOf(k) >= 0 || k.startsWith('_')) {
       continue;
