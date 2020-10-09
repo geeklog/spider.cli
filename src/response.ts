@@ -1,6 +1,6 @@
 import pretty from 'pretty';
 import cheerio from 'cheerio';
-import entities from 'entities';
+import * as entities from 'entities';
 import JQ from 'node-jq';
 import { collectStream, isStream } from './stream';
 import { parseURL, normalizeLink, normalizeAllLinksInHtml, removeAllTags } from './helper';
@@ -153,6 +153,7 @@ export class Response {
       data = $.html();
     }
     if (this.options.pretty || this.options.normalizeLinks) {
+      console.error('normalizeLinks', this.url);
       data = normalizeAllLinksInHtml(this.url, data);
     }
     if (this.options.pretty || this.options.decodeEntities) {
