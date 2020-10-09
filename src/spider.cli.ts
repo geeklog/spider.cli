@@ -37,12 +37,13 @@ cmdr.option('-x, --headers <headers>', 'custom headers')
 cmdr.option('-u, --user-agent <userAgent>', 'user agent: chrome/firefox/safari')
 cmdr.option('-v, --log [loglevel]',
             'log messages levels: silent/debug/warn/error', 'debug')
+cmdr.option('--wait-for', 'wait for document ready (in headless browser)')
 cmdr.option('-D, --unescape', 'decode html entities')
 cmdr.option('-n, --parallel <n>',
             'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs',
             (value, prev) => prev,
             1)
-cmdr.option('--normalize-links',
+cmdr.option('-L, --normalize-links',
             'Normalize links, make the links start with http://www.domain etc')
 cmdr.option('--remove-scripts', 'Remove scripts from the html')
 cmdr.option('--remove-empty-lines', 'Remove empty lines from the html')
@@ -75,7 +76,7 @@ cmdr.command('res.headers [url]')
   .action(url => {
     Spider.runForResponse(
       url,
-      Object.assign(cli.cmdrOptions(cmdr), {stream: true}),
+      Object.assign(cli.cmdrOptions(cmdr.program), {stream: true}),
       (res, output) => output(res.headers)
     )
   });
