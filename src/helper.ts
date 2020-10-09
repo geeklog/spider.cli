@@ -59,7 +59,7 @@ export const normalizeLink = function(url, link) {
 export const normalizeAllLinksInHtml = function(url, html) {
   html = html.replace(/src="(.+?)"/g, (_, link) => `src="${normalizeLink(url, link)}"`);
   html = html.replace(/src=(\/.+?) /g, (_, link) => `src="${normalizeLink(url, link)}"`);
-  html = html.replace(/href="(.+?)"/g, (_, link) => `src="${normalizeLink(url, link)}"`);
+  html = html.replace(/href="(.+?)"/g, (_, link) => `href="${normalizeLink(url, link)}"`);
   return html;
 }
 
