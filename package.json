@@ -1,16 +1,17 @@
 {
-  "name": "spider",
-  "version": "1.0.0",
-  "description": "",
+  "name": "spider.cli",
+  "version": "1.0.3",
+  "description": "Spider for commandline and programming",
   "main": "spider.js",
   "bin": {
-    "spider": "dist/spider.cli.js"
+    "spider": "spider.cli.js"
   },
   "scripts": {
-    "pub-dev": "npm link",
+    "pub-dev": "pushd . && tsc && cp package.json dist && cd dist && npm link || popd",
+    "pub": "pushd . && tsc && cp package.json dist && cd dist && npm publish || popd",
     "build": "tsc"
   },
-  "keywords": [],
+  "keywords": ["spider","crawler","commandline","cli","node.js","javascript","typescript"],
   "author": "",
   "license": "ISC",
   "dependencies": {
