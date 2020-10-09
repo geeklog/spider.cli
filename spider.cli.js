@@ -33,7 +33,7 @@ cmdr.option('-t, --timeout <millsec>', 'set fetch timeout')
 cmdr.option('-x, --headers <headers>', 'custom headers')
 cmdr.option('-w, --wait-for <selector>', 'wait for selector')
 cmdr.option('--user-agent <userAgent>', 'user agent: chrome/firefox/safari')
-cmdr.option('-v, --log [loglevel]', 'log messages levels: silent/debug/warn/error', 'silent')
+cmdr.option('-v, --log [loglevel]', 'log messages levels: silent/debug/warn/error', 'debug')
 cmdr.option('-D, --unescape', 'decode html entities')
 cmdr.option('-n, --parallel <n>', 'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs', 1)
 cmdr.option('--normalize-links', 'Normalize links')
@@ -44,12 +44,16 @@ cmdr.option('-p, --pretty', 'Prettify html, equals to: --normalize-links --remov
 cmdr.command('config <getset> <key> [value]')
   .description('get or set configuration, the default configuration is store at ~/.spider.cli.json')
   .action((getset, key, value) => {
+    const args = cli.cmdrOptions(cmdr);
     if (getset === 'get') {
-      console.log(new Spider(cli.cmdrOptions(cmdr)).getConfig(key));
+      const r = new Spider(args).cfg.get(key);
+      console.log(r);
     } else if (getset === 'set') {
-      new Spider(cli.cmdrOptions(cmdr)).setConfig(key, value);
+      new Spider(args).cfg.set(key, value);
+    } else if (getset === 'toggle') {
+      new Spider(args).cfg.toggle(key, value.toLowerCase() === 'true' || value === '1');
     } else {
-      throw new Error('Invalid Arguments');
+      console.error(`Invalid operation: ${getset}`);
     }
   });
 cmdr.command('expand <url>').alias('e')

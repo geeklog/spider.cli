@@ -152,10 +152,17 @@ class Response {
 
   css(pattern) {
     const p = this.getData().then(
-      data => new CssSelector(data, this.options).css(pattern).getall()
+      data => {
+        const r = new CssSelector(data, this.options).css(pattern);
+        if (r) {
+          return r.getall();
+        } else {
+          console.error('NODATA', this.url, JSON.stringify(data));
+        }
+      }
     );
     p.get = () => p.then((results) => results[0]);
-    p.getall = () => p.then((results) => results);
+    p.getall = () => p.then((results) => results || []);
     p.map = fn => p.then((results) => {
       return (results || []).map(r => fn(new CssSelector(r, this.options)));
     });

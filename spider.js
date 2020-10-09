@@ -5,52 +5,13 @@ const os = require('os');
 const {isString, merge} = require('lodash');
 const cheerio = require('cheerio');
 const crypto = require('crypto');
+const { SocksProxyAgent } = require('socks-proxy-agent');
 const {collectStream, monitorStream} = require('./stream');
 const {isURL, resolveURLs, uniqOutput, concurrent, concurrently} = require('./helper');
 const Response = require('./response');
-
-const userAgents = {
-  chrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36',
-  googlebot: 'Googlebot/2.1 (+http://www.googlebot.com/bot.html)',
-  default: 'CURL'
-};
-class Logger {
-  constructor(level = 'none') {
-    this.level = level;
-  }
-  debug(...args) {
-    if (this.level === 'debug') {
-      console.log(...args);
-    }
-  }
-  warn(...args) {
-    if (this.level === 'debug' || this.level === 'warn') {
-      console.log(...args);
-    }
-  }
-  error(...args) {
-    if (this.level === 'debug' || this.level === 'warn' || this.level === 'error') {
-      console.log(...args);
-    }
-  }
-}
-
-class ConfigLoader {
-  constructor(path) {
-    this.path = path = path.replace('~', os.homedir());
-    this.data = null;
-  }
-  load() {
-    fs.ensureFileSync(this.path);
-    const jsonStr = fs.readFileSync(this.path).toString();
-    if (jsonStr) {
-      this.data = JSON.parse(jsonStr);
-    }
-  }
-  save () {
-    fs.writeFileSync(path, JSON.stringify(this.data, null, 2));
-  }
-}
+const Logger = require('./logger');
+const userAgents = require('./useragent');
+const ConfigLoader = require('./config');
 
 module.exports = class Spider {
 
@@ -94,20 +55,8 @@ module.exports = class Spider {
     this.cfg.load();
 
     if (this.options.cache === true) {
-      this.options.cache = this.cfg.data.cachePath
+      this.options.cache = this.cfg.get('cachePath');
     }
-  }
-
-  getConfig(key) {
-    if (key === '*') {
-      return this.cfg.data;
-    }
-    return this.cfg.data[key];
-  }
-
-  setConfig(key, value) {
-    this.cfg.data[key] = value;
-    this.cfg.save();
   }
 
   async shell(url) {
@@ -302,8 +251,21 @@ module.exports = class Spider {
       options.headers || {}
     );
     const https = require('https');
-    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+    let httpsAgent = new https.Agent({ rejectUnauthorized: false });
     this.logger.debug('Get', url);
+    const proxyStr = this.cfg.get('proxy');
+    if (proxyStr) {
+      const parts = proxyStr.split(':');
+      const port = parts.pop();
+      const host = parts.join(':');
+      httpsAgent = new SocksProxyAgent({
+        host,
+        port,
+        protocol: 'socks5:',
+        rejectUnauthorized: false
+      });
+      this.logger.debug('Using socks5 proxy:', proxyStr);
+    }
     try {
       const res = await axios.get(url, {
         timeout: Number(options.timeout) || 30000,
