@@ -1,6 +1,6 @@
 {
   "name": "spider.cli",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Spider for commandline and programming",
   "main": "spider.js",
   "bin": {
