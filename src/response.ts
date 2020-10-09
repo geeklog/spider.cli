@@ -37,7 +37,7 @@ export class CssSelector {
           res = res.split('\n').map(line => line.trim()).filter(line => !!line).join('\n');
         } else {
           res = format(formatter, {
-            '@([a-z|A-Z|0-9|-|_]+)': (_, s) => this.unescapeOrNot(el.attr(s)) || '',
+            '@([a-z|A-Z|0-9|\\-|_]+)': (_, s) => this.unescapeOrNot(el.attr(s)) || '',
             '%html': () => this.unescapeOrNot(this.prettyHTMLOrNot($.html(el))),
             '%text': () => this.unescapeOrNot(el.text()),
             '%el': () => el[0],
