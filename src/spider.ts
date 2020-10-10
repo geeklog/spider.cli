@@ -7,16 +7,23 @@ import cheerio from 'cheerio';
 import crypto from 'crypto';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { collectStream, monitorStream } from './stream';
-import { isURL, resolveURLs, uniqOutput, concurrent, concurrently } from './helper';
+import { isURL, resolveURLs, uniqOutput, concurrent, concurrently, expandURL } from './helper';
 import { Response } from './response';
 import Logger from './logger';
 import userAgents from './useragent';
 import ConfigLoader from './config';
 
-export type SpiderOption = {
-  cache?: string,
-  stream?: boolean,
-  expire?: number
+export interface SpiderOption {
+  cache?: string;
+  stream?: boolean;
+  expire?: number;
+}
+
+export interface SpiderBatchRunOption extends SpiderOption {
+  urls: string | string[];
+  parallel?: number;
+  unique?: boolean;
+  follow?: string;
 }
 
 export default class Spider {
@@ -26,7 +33,26 @@ export default class Spider {
   logger: Logger;
   jobs: {};
 
-  static async runForResponse(startUrls, options, _yield) {
+  static async batchRun(
+    options: SpiderBatchRunOption,
+    action: (url: string, spider: Spider) => Promise<void>
+  ): Promise<void> {
+    let urls: string[];
+    if (typeof options.urls === 'string') {
+      urls = expandURL(options.urls);
+    } else {
+      urls = options.urls;
+    }
+    const spider = new Spider(options);
+    const q = concurrently(options.parallel, urls, async u => {
+      await action(u, spider);
+    });
+    return new Promise((resolve) => {
+      q.done(() => resolve());
+    });
+  }
+
+  static async runForResponse(startUrls, options: SpiderBatchRunOption, _yield) {
     const spider = new Spider(options);
     const urls = await resolveURLs(startUrls);
     const output = uniqOutput(options.unique);
@@ -58,7 +84,7 @@ export default class Spider {
       await _yield(u, spider, output);
     }
     const q = concurrently(options.parallel, urls, fn);
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       q.done(resolve);
     });
   }
@@ -295,7 +321,6 @@ export default class Spider {
       return res;
       
     } catch (error) {
-      this.logger.error('Fetch error:', error.message, url);
       if (options.retry > 0) {
         options.try = options.try || 0;
         options.try++;
@@ -303,6 +328,7 @@ export default class Spider {
         this.logger.debug(`Retry ${options.try}:`, url);
         return await this.axiosGetWithOptions(url, options);
       } else {
+        this.logger.error('Fetch error:', error.message, url);
         return null;
       }
     }

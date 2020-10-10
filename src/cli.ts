@@ -1,8 +1,8 @@
 export { progressing, multi_progressing as multiProgressing } from 'cliall/loading';
 import readline from 'readline';
 
-export const cmdrOptions = o => {
-  const options = {};
+export const cmdrOptions = (o: any) => {
+  const options: any = {};
   const skips = ['parent', 'domain', 'commands', 'program', 'options', 'Command', 'Option', 'rawArgs', 'args', 'CommanderError'];
   for (const k of Object.keys(o)) {
     if (skips.indexOf(k) >= 0 || k.startsWith('_')) {
