@@ -1,4 +1,4 @@
-import { stdin } from './cli';
+import { collectStdin } from './cli';
 import { flatten, isString } from 'lodash';
 import concurr from 'concurr';
 
@@ -68,7 +68,7 @@ export const resolveURLs = async function(url: string) {
     return expandURL(url);
   } else {
     const urls = flatten(
-      (await stdin())
+      (await collectStdin())
         .split('\n')
         .filter(s => !!s)
         .map(s => expandURL(s))

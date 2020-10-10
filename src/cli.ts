@@ -12,7 +12,7 @@ export const cmdrOptions = o => {
   return options;
 }
 
-export const stdin = async function(): Promise<string> {
+export const collectStdin = async function(): Promise<string> {
   return new Promise((resolve, reject) => {
     process.stdin.on('error', (err) => {
       reject(err);
