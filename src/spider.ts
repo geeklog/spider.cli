@@ -31,19 +31,19 @@ export default class Spider {
     const urls = await resolveURLs(startUrls);
     const output = uniqOutput(options.unique);
     let q;
-    const fn = async u => {
+    const fetch = async u => {
       if (!u) {
         return;
       }
       const res = await spider.get(u);
       return [u, res];
     }
-    q = concurrently(options.parallel, urls, fn);
+    q = concurrently(options.parallel, urls, fetch);
     q.one(async ([u, res]) => {
       await _yield(res, output);
       if (options.follow) {
-        const followURL = await res.css(options.follow).get();
-        followURL && q.go(fn.bind(null, res.normalizeLink(followURL)));
+        const followURL = res.normalizeLink(await res.css(options.follow).get());
+        followURL && q.go(fetch.bind(null, followURL));
       }
     })
   }
