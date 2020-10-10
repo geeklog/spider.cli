@@ -1,4 +1,5 @@
 export { progressing, multi_progressing as multiProgressing } from 'cliall/loading';
+import readline from 'readline';
 
 export const cmdrOptions = o => {
   const options = {};
@@ -27,4 +28,24 @@ export const collectStdin = async function(): Promise<string> {
     });
     process.stdin.resume();
   });
+}
+
+export const readlinesStdin = async function(onLineCallback: (line: string) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: true
+    });
+    rl.on('line', (line) => {
+      onLineCallback(line);
+    });
+    rl.on('close', () => {
+      resolve();
+    });
+    rl.on('error', (error) => {
+      reject(error);
+    });
+  })
+  
 }
