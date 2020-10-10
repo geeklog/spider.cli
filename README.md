@@ -50,6 +50,7 @@ spider get 'https://news.ycombinator.com/news?p=[1..10]'
 ## Cache
 
 - `-c <cachePath>` Specify a cachePath (or simply `-c`) to enable the cache functionality, if cachePath is not provided, default to the `os.tmpdir() + hierachy(url)`.
+> Note: When using cache with `spider save`, `spdier.cli` can detect if the file is saved and avoid redownload. if the file is an image, it can detect whether the image is corrupted and make a redownload.
 
 - `-e <expireTime>` Specify the cache expire time in seconds, default is 1 day , which is 864000 second.
 
@@ -157,6 +158,13 @@ spider link 'https://news.ycombinator.com/news?p=[1..10]' -i -n 3 | spider link 
 ## Headless Browser
 
 With those evasive react-orientive web development, it getting annoying for the spider industry, but luckily for us, there's a new dimension, a new era of automation, here we embrace the headless browser, a heavy artillery that ends the crawl war for good (use puppeteer internally).
+
+### Install
+You need to install Puppeteer yourself before use the headless browser, it's not installed beforehand because it required a headless chrome instance which take up about 100M disk space that might make the install process slow to crawl depending on you internet speed.
+
+```
+npm i puppeteer
+```
 
 ### Start a headless browser daemon
 

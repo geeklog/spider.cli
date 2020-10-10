@@ -11,6 +11,7 @@
     "pub": "pushd . && tsc && cp package.json dist && cp README.md dist && cd dist && npm publish || popd",
     "build": "tsc"
   },
+  "prepublish": "tsc",
   "keywords": ["spider","crawler","commandline","cli","node.js","javascript","typescript"],
   "author": "",
   "license": "ISC",
@@ -32,10 +33,12 @@
     "pretty": "^2.0.0",
     "pretty-bytes": "^5.3.0",
     "promise-async": "^0.2.0",
-    "puppeteer": "^3.0.1",
     "qrpc": "^1.1.6",
     "socks-proxy-agent": "^5.0.0",
     "unfluff": "^3.2.0"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^3.0.1"
   },
   "devDependencies": {
     "@types/node": "^14.11.8",
