@@ -30,7 +30,6 @@ export default class Spider {
     const spider = new Spider(options);
     const urls = await resolveURLs(startUrls);
     const output = uniqOutput(options.unique);
-    let q;
     const fetch = async u => {
       if (!u) {
         return;
@@ -38,14 +37,17 @@ export default class Spider {
       const res = await spider.get(u);
       return [u, res];
     }
-    q = concurrently(options.parallel, urls, fetch);
+    const q = concurrently(options.parallel, urls, fetch);
     q.one(async ([u, res]) => {
       await _yield(res, output);
       if (options.follow) {
         const followURL = res.normalizeLink(await res.css(options.follow).get());
         followURL && q.go(fetch.bind(null, followURL));
       }
-    })
+    });
+    return new Promise((resolve, reject) => {
+      q.done(resolve);
+    });
   }
 
   static async runForSpider(startUrls, options, _yield) {
@@ -55,7 +57,10 @@ export default class Spider {
     const fn = async u => {
       await _yield(u, spider, output);
     }
-    concurrently(options.parallel, urls, fn);
+    const q = concurrently(options.parallel, urls, fn);
+    return new Promise((resolve, reject) => {
+      q.done(resolve);
+    });
   }
 
   constructor(options: any = {}) {
