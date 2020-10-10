@@ -7,11 +7,10 @@
     "spider": "spider.cli.js"
   },
   "scripts": {
-    "pub-dev": "pushd . && tsc && cp package.json dist && cp README.md dist && cd dist && npm link || popd",
-    "pub": "pushd . && tsc && cp package.json dist && cp README.md dist && cd dist && npm publish || popd",
+    "pub-dev": "tsc && pushd . && tsc && cp package.json dist && cp README.md dist && cd dist && npm link || popd",
+    "pub": "tsc && pushd . && tsc && cp package.json dist && cp README.md dist && cd dist && npm publish || popd",
     "build": "tsc"
   },
-  "prepublish": "tsc",
   "keywords": ["spider","crawler","commandline","cli","node.js","javascript","typescript"],
   "author": "",
   "license": "ISC",
