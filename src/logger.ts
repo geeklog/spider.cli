@@ -19,9 +19,7 @@ export default class Logger {
   }
 
   error(...args: any[]) {
-    if (this.level === 'debug' || this.level === 'warn' || this.level === 'error') {
-      console.error(...args);
-    }
+    console.error(...args);
   }
 
 }

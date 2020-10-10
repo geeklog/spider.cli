@@ -96,6 +96,11 @@ export default class Spider {
 
     let res = await this.get(url, options);
 
+    if (!res.headers) {
+      this.logger.error('Save Fail:', url, filePath, res);
+      return;
+    }
+
     const totalBytes = Number(res.headers['content-length']);
 
     options.onStart && options.onStart(totalBytes);
