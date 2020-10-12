@@ -110,13 +110,14 @@ export default class Spider {
         }
       });
     } catch(err) {
-      this.logger.error('Save Fail:', err.message, url, filePath);
       if (options.retry > 0) {
-        this.logger.error('Retry:', url, filePath);
+        this.logger.debug('Retry:', url, filePath);
         options.try = options.try || 0;
         options.try ++;
         options.retry --;
         this.save(url, filePath, options);
+      } else {
+        this.logger.error('Save Fail:', err.message, url, filePath);
       }
     }
   }
