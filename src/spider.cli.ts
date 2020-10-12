@@ -4,24 +4,57 @@
  * Spider for command line.
  * run `spider --help` for more infomation.
  */
-import { EventEmitter } from 'events';
 import { spawn } from 'child_process';
 import chalk from 'chalk';
 import cmdr from 'commander';
 import * as cli from './cli';
-import { expandURL, resolveMultipe } from './helper';
+import { expandURL, parseHeaders, resolveMultipe, resolveURLs, uniqOutput } from './helper';
 import Spider from './spider';
+import { Response } from './response';
 import * as SpiderDaemon from './spider.daemon';
+import { Concurrent } from 'concurr';
 
-const parseHeaders = desc => {
-  if (!desc) {
-    return {};
-  }
-  return desc.split('\\n').reduce((all, header) => {
-    const [k, ...vs] = header.split(':');
-    return Object.assign(all, {[k]: vs.join(':')});
-  }, {});
+const batchRunForResponse = async(
+  url: string, 
+  {stream}: { stream?: boolean},
+  handler: (
+    url: string,
+    res: Response,
+    output: (s: any) => void
+  ) => Promise<void>
+) => {
+  const urls = await resolveURLs(url);
+  const options = Object.assign(cli.cmdrOptions(cmdr.program), {stream});
+  const output = uniqOutput(options.unique);
+  let jobs: Concurrent;
+  const fetch = async (url: string, spider: Spider) => {
+    const res = await spider.get(url);
+    await handler(url, res, output);
+    if (options.follow) {
+      const followURL = res.normalizeLink(await res.css(options.follow).get());
+      followURL && jobs.go(() => fetch(url, spider));
+    }
+  };
+  jobs = Spider.batchRun({ urls, ...options }, fetch);
 }
+
+const batchRunForSpider = async(
+  url: string, 
+  {stream}: { stream?: boolean},
+  handler: (
+    url: string,
+    spider: Spider,
+    output: (s: any) => void
+  ) => Promise<void>
+) => {
+  const urls = await resolveURLs(url);
+  const options = Object.assign(cli.cmdrOptions(cmdr.program), {stream});
+  const output = uniqOutput(options.unique);
+  Spider.batchRun({ urls, ...options }, async (url: string, spider: Spider) => {
+    await handler(url, spider, output);
+  });
+}
+
 cmdr.version('0.1.0');
 cmdr.option('-c, --cache [cachePath]',
             'use cache, if a cache path is specified, use that, other wise, use a path of (os tmp path + base64(url));')
@@ -73,25 +106,21 @@ cmdr.command('expand <url>').alias('e')
   });
 cmdr.command('res.headers [url]')
   .description('show the response headers')
-  .action(url => {
-    Spider.runForResponse(
-      url,
-      Object.assign(cli.cmdrOptions(cmdr.program), {stream: true}),
-      (res, output) => output(res.headers)
-    )
+  .action(urlPattern => {
+    batchRunForResponse(urlPattern, {stream: true}, async (url, res, output) => output(res.headers));
   });
 cmdr.command('get [url]').alias('g')
   .description('Get resource')
-  .action(url => {
-    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => output(await res.getData()))
+  .action(urlPattern => {
+    batchRunForResponse(urlPattern, {}, async (url, res, output) => output(await res.getData()))
   });
 cmdr.command('save <path> [url]')
   .description('Save resource to path')
-  .action((path, url) => {
-    Spider.runForSpider(url, cli.cmdrOptions(cmdr), async (u, spider) => {
-      const filePath = spider.toSavePath(u, path);
+  .action((path, urlPattern) => {
+    batchRunForSpider(urlPattern, {}, async (url, spider, output) => {
+      const filePath = spider.toSavePath(url, path);
       let load;
-      await spider.save(u, filePath, Object.assign(cli.cmdrOptions(cmdr), {
+      await spider.save(url, filePath, {
         onStart(totals) {
           if (cmdr.log === 'progress') {
             load = cmdr.parts
@@ -106,28 +135,28 @@ cmdr.command('save <path> [url]')
               : load.progress(curr);
           }
         }
-      }));
+      });
     });
   });
 cmdr.command('css <selector> [url]').alias('ext')
   .description('Apply css selector to extract content from html')
-  .action(async (selector, url) => {
-    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
+  .action(async (selector, urlPattern) => {
+    batchRunForResponse(urlPattern, {}, async (url, res, output) => {
       const ss = await res.css(selector).getall();
       ss.map(output);
     });
   });
 cmdr.command('regex <re> [url]').alias('re')
   .description('Match RegExp from webpage')
-  .action(async (re, url) => {
-    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
+  .action(async (re, urlPattern) => {
+    batchRunForResponse(urlPattern, {}, async (url, res, output) => {
       (await res.regex(re).getall()).map(output);
     });
   });
 cmdr.command('link [url]').alias('l')
   .description('Extract links from webpage')
-  .action(async url => {
-    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
+  .action(async urlPattern => {
+    batchRunForResponse(urlPattern, {}, async (url, res, output) => {
       for (const link of await res.links().getall()) {
         output(link);
       }
@@ -135,15 +164,15 @@ cmdr.command('link [url]').alias('l')
   });
 cmdr.command('image <url> [extractLevel]').alias('img')
   .description('Extract images from webpage')
-  .action(async (url, extractLevel) => {
-    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
+  .action(async (urlPattern, extractLevel) => {
+    batchRunForResponse(urlPattern, {}, async (url, res, output) => {
       (await res.images(extractLevel).getall()).map(output);
     });
   });
 cmdr.command('article <url> [options]').alias('arc')
   .description('Extract main article from webpge')
-  .action(async (url, options) => {
-    Spider.runForResponse(url, cli.cmdrOptions(cmdr), async (res, output) => {
+  .action(async (urlPattern, options) => {
+    batchRunForResponse(urlPattern, {}, async (url, res, output) => {
       const html = await res.getData();
       const extractor = require('unfluff');
       const data = extractor(html);

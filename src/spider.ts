@@ -7,11 +7,12 @@ import cheerio from 'cheerio';
 import crypto from 'crypto';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { collectStream, monitorStream } from './stream';
-import { isURL, resolveURLs, uniqOutput, concurrent, concurrently, expandURL } from './helper';
+import { isURL, concurrently, expandURL } from './helper';
 import { Response } from './response';
 import Logger from './logger';
 import userAgents from './useragent';
 import ConfigLoader from './config';
+import { Concurrent } from 'concurr';
 
 export interface SpiderOption {
   cache?: string;
@@ -28,72 +29,33 @@ export interface SpiderBatchRunOption extends SpiderOption {
 
 export default class Spider {
 
-  options: any;
-  cfg: ConfigLoader;
-  logger: Logger;
-  jobs: {};
-
-  static async batchRun(
+  static batchRun(
     options: SpiderBatchRunOption,
     action: (url: string, spider: Spider) => Promise<void>
-  ): Promise<void> {
+  ): Concurrent {
     let urls: string[];
     if (typeof options.urls === 'string') {
       urls = expandURL(options.urls);
     } else {
       urls = options.urls;
     }
-    const spider = new Spider(options);
+    const spider = new Spider({...options});
     const q = concurrently(options.parallel, urls, async u => {
       await action(u, spider);
     });
-    return new Promise((resolve) => {
-      q.done(() => resolve());
-    });
+    spider.jobs = q;
+    return q;
   }
 
-  static async runForResponse(startUrls, options: SpiderBatchRunOption, _yield) {
-    const spider = new Spider(options);
-    const urls = await resolveURLs(startUrls);
-    const output = uniqOutput(options.unique);
-    const fetch = async u => {
-      if (!u) {
-        return;
-      }
-      const res = await spider.get(u);
-      return [u, res];
-    }
-    const q = concurrently(options.parallel, urls, fetch);
-    q.one(async ([u, res]) => {
-      await _yield(res, output);
-      if (options.follow) {
-        const followURL = res.normalizeLink(await res.css(options.follow).get());
-        followURL && q.go(fetch.bind(null, followURL));
-      }
-    });
-    return new Promise((resolve, reject) => {
-      q.done(resolve);
-    });
-  }
-
-  static async runForSpider(startUrls, options, _yield) {
-    const spider = new Spider(options);
-    const urls = await resolveURLs(startUrls);
-    const output = uniqOutput(options.unique);
-    const fn = async u => {
-      await _yield(u, spider, output);
-    }
-    const q = concurrently(options.parallel, urls, fn);
-    return new Promise((resolve) => {
-      q.done(resolve);
-    });
-  }
+  options: any;
+  cfg: ConfigLoader;
+  logger: Logger;
+  jobs: Concurrent;
 
   constructor(options: any = {}) {
     this.options = options;
     this.cfg = new ConfigLoader('~/.spider.cli.json');
     this.logger = new Logger(options.log);
-    this.jobs = {};
     this.cfg.load();
 
     if (this.options.cache === true) {
@@ -110,11 +72,11 @@ export default class Spider {
     context.$ = cheerio.load(res.data);
   }
 
-  async save(url, filePath, options) {
+  async save(url: string, filePath: string, options: any) {
     if (!isURL(url)) {
       throw new Error('Malform URL:'+url);
     }
-    options = Object.assign({}, {stream: true, cache: false}, options);
+    options = Object.assign({}, this.options, {stream: true, cache: false}, options);
     // TODO
     // 1. 断点续传
     // 2. 多片段下载时, 使用文件缓存而不是内存缓存
@@ -159,13 +121,6 @@ export default class Spider {
     }
   }
 
-  job(id, options) {
-    if (!this.jobs[id]) {
-      this.jobs[id] = concurrent(options.concurr, options);
-    }
-    return this.jobs[id];
-  }
-  
   async followAll(urlOrCssPatterns, extract) {
     if (!Array.isArray(urlOrCssPatterns)) {
       throw new Error('urlOrCssPatterns must be an array');

@@ -113,3 +113,13 @@ export const uniqOutput = (b) => {
     console.log(s);
   }
 };
+
+export const parseHeaders = desc => {
+  if (!desc) {
+    return {};
+  }
+  return desc.split('\\n').reduce((all, header) => {
+    const [k, ...vs] = header.split(':');
+    return Object.assign(all, {[k]: vs.join(':')});
+  }, {});
+}

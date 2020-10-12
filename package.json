@@ -7,11 +7,19 @@
     "spider": "spider.cli.js"
   },
   "scripts": {
-    "pub-dev": "tsc && pushd . && tsc && cp package.json dist && cp README.md dist && cd dist && npm link || popd",
-    "pub": "tsc && pushd . && tsc && cp package.json dist && cp README.md dist && cd dist && npm publish || popd",
+    "pub-dev": "tsc && pushd . && cp package.json dist && cp README.md dist && cd dist && npm link || popd",
+    "pub": "tsc && pushd . && cp package.json dist && cp README.md dist && cd dist && npm publish || popd",
     "build": "tsc"
   },
-  "keywords": ["spider","crawler","commandline","cli","node.js","javascript","typescript"],
+  "keywords": [
+    "spider",
+    "crawler",
+    "commandline",
+    "cli",
+    "node.js",
+    "javascript",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -22,7 +30,7 @@
     "cliall": "^0.2.0",
     "clui": "^0.3.6",
     "commander": "^6.1.0",
-    "concurr": "^1.0.0",
+    "concurr": "^1.1.0",
     "daemon": "^1.1.0",
     "entities": "^2.0.2",
     "fs-extra": "^9.0.0",
