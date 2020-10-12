@@ -1,15 +1,15 @@
 {
   "name": "spider.cli",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Spider for commandline and programming",
   "main": "spider.js",
   "bin": {
     "spider": "spider.cli.js"
   },
   "scripts": {
-    "pub-dev": "tsc && pushd . && cp package.json dist && cp README.md dist && cd dist && npm link || popd",
-    "pub": "tsc && pushd . && cp package.json dist && cp README.md dist && cd dist && npm publish || popd",
-    "build": "tsc"
+    "pub-dev": "tsc -d && pushd . && cp package.json dist && cp README.md dist && cd dist && npm link || popd",
+    "pub": "tsc -d && pushd . && cp package.json dist && cp README.md dist && cd dist && npm publish || popd",
+    "build": "tsc -d"
   },
   "keywords": [
     "spider",
