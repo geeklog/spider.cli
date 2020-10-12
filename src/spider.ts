@@ -15,14 +15,15 @@ import ConfigLoader from './config';
 import { Concurrent } from 'concurr';
 
 export interface SpiderOption {
-  cache?: string;
+  cache?: string | boolean;
   stream?: boolean;
   expire?: number;
+  retry?: number;
   headers?: {[index: string]: string}
 }
 
 export interface SpiderBatchRunOption extends SpiderOption {
-  urls: string | string[];
+  urls?: string | string[];
   parallel?: number;
   unique?: boolean;
   follow?: string;
@@ -32,20 +33,25 @@ export default class Spider {
 
   static batchRun(
     options: SpiderBatchRunOption,
-    action: (url: string, spider: Spider) => Promise<void>
-  ): Concurrent {
+    action?: (url: string, spider: Spider) => Promise<void>
+  ): Spider {
+
     let urls: string[];
     if (typeof options.urls === 'string') {
       urls = expandURL(options.urls);
     } else {
       urls = options.urls;
     }
+    urls = urls || [];
+
     const spider = new Spider({...options});
     const q = concurrently(options.parallel, urls, async u => {
-      await action(u, spider);
+      if (action) {
+        await action(u, spider);
+      }
     });
     spider.jobs = q;
-    return q;
+    return spider;
   }
 
   options: any;
@@ -188,7 +194,7 @@ export default class Spider {
     }
   
     const cachePath = isString(useCache)
-      ? path.join(useCache, this.toFilePath(url))
+      ? path.join(useCache as string, this.toFilePath(url))
       : path.join(os.tmpdir(), this.toFilePath(url));
     
     let cacheExist = await fs.pathExists(cachePath);

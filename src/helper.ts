@@ -91,7 +91,11 @@ export const resolveMultipe = async (startUrls, options, _yield) => {
   concurrently(options.parallel, urls, fn);
 }
 
-export const concurrently = (n, vals, fn) => {
+export const concurrently = (
+  n: number,
+  vals: any[] = [],
+  fn: (item: any) => Promise<any> = (item: any) => undefined
+) => {
   const q = concurrent(n, {preserveOrder: true});
   for (const v of vals) {
     q.go(fn.bind(null, v));
