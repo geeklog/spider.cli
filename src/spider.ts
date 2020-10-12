@@ -18,6 +18,7 @@ export interface SpiderOption {
   cache?: string;
   stream?: boolean;
   expire?: number;
+  headers?: {[index: string]: string}
 }
 
 export interface SpiderBatchRunOption extends SpiderOption {

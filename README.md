@@ -52,7 +52,7 @@ spider get 'https://news.ycombinator.com/news?p=[1..10]'
 ## Cache
 
 - `-c <cachePath>` Specify a cachePath (or simply `-c`) to enable the cache functionality, if cachePath is not provided, default to the `os.tmpdir() + hierachy(url)`.
-> Note: When using cache with `spider save`, `spdier.cli` can detect if the file is saved and avoid redownload. if the file is an image, it can detect whether the image is corrupted and make a redownload.
+> Note: When using cache with `spider save`, `spdier.cli` can detect if the file is saved and avoid redownload. if the file is an image, it can detect whether the image is corrupted and make a redownload. // THIS FEATURE NOT IMPLEMENTED YET
 
 - `-e <expireTime>` Specify the cache expire time in seconds, default is 1 day , which is 864000 second.
 
@@ -98,6 +98,8 @@ CSS selector followed by a `=>`, followed by a extract pattern:
 - `%html` means the outer html.
 - `@attr` starts with `@` means extract the attribute.
 - `trim` trim the text, prev item must be a string.
+- `head(n)` take the first n chars of the text, prev item must be a string. // THIS FEATURE NOT IMPLEMENTED YET
+- `tail(n)` take the last n chars of the text, prev item must be a string. // THIS FEATURE NOT IMPLEMENTED YET
 
 ```shell
 spider css '#hnmain tr.athing td.title a => %text : @href' 'https://news.ycombinator.com/news?p=[1..5]'
@@ -114,6 +116,21 @@ It's the same as:
 ```shell
 spider css '#hnmain tr.athing td.title a => %html' 'https://...'
 ```
+
+Omitting the selector part means select the element itself, only use in subselection.
+
+```typescript
+import Spider from 'spider.cli';
+
+const spider = new Spider();
+const res = await spider.get('https://news.ycombinator.com/');
+await res.css('tr.athing').each((tr) => {
+  console.log(tr.css('=> %text').get());
+  console.log(tr.css('a => @href').getall());
+});
+```
+
+`=> %text` is the same as `%el => %text`, `%element => %text`, `% => %text`
 
 Your can have multiple `=>` to make a item pipeline.
 

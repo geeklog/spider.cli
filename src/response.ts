@@ -1,90 +1,23 @@
 import pretty from 'pretty';
 import cheerio from 'cheerio';
 import * as entities from 'entities';
-import JQ from 'node-jq';
+import * as JQ from 'node-jq';
 import { collectStream, isStream } from './stream';
 import { parseURL, normalizeLink, normalizeAllLinksInHtml, removeAllTags } from './helper';
-
-export class CssSelector {
-  data(data: any): any {
-    throw new Error('Method not implemented.');
-  }
-  pipe(arg0: any) {
-    throw new Error('Method not implemented.');
-  }
-  content: any;
-  options: any;
-  unescapeOrNot: (s: any) => any;
-  prettyJSONOrNot: (s: any) => any;
-  prettyHTMLOrNot: (s: any) => any;
-  headers: any;
-
-  constructor(content?: any, options?: any) {
-    this.content = content;
-    this.options = options;
-    this.unescapeOrNot = s => this.options.unescape ? entities.decodeHTML(s) : s;
-    this.prettyJSONOrNot = s => this.options.pretty ? JSON.stringify(JSON.parse(s), null, 2) : s;
-    this.prettyHTMLOrNot = s => this.options.pretty ? pretty(s) : s;
-  }
-
-  css(pattern) {
-    const formatAll = (el, formatters) => {
-      let res;
-      for (const formatter of formatters) {
-        if (formatter === 'trim') {
-          res = res.trim();
-        } else if (formatter === 'trimLines') {
-          res = res.split('\n').map(line => line.trim()).filter(line => !!line).join('\n');
-        } else {
-          res = format(formatter, {
-            '@([a-z|A-Z|0-9|\\-|_]+)': (_, s) => this.unescapeOrNot(el.attr(s)) || '',
-            '%html': () => this.unescapeOrNot(this.prettyHTMLOrNot($.html(el))),
-            '%text': () => this.unescapeOrNot(el.text()),
-            '%el': () => el[0],
-            '%json': () => el[0].children.map(_ => this.prettyJSONOrNot(_.data)).join('\n')
-          });
-        }
-      }
-      return res;
-    }
-
-    function format(s, replacements) {
-      for (const repl in replacements) {
-        s = s.replace(new RegExp(repl, 'g'), (...args) => replacements[repl](...args));
-      }
-      return s;
-    }
-
-    let [selector, ...formatters] = pattern.split('=>').map(s => s.trim());
-    const data = this.content;
-    if (!data) {
-      return null;
-    }
-    const $ = cheerio.load(data);
-    const results = [];
-    if (!formatters.length) {
-      formatters = ['%html'];
-    }
-    if (selector === '%el') {
-      results.push(formatAll($($('*')[0]), formatters));
-    } else {
-      for (const el of $(selector).toArray().map($)) {
-        results.push(formatAll(el, formatters));
-      }
-    }
-    
-    return {
-      get: () => results[0],
-      getall: () => results
-    };
-  }
-}
+import { CssSelector } from './selector';
 
 export type ResponseConfig = {
   url: string;
   data?: any;
   res?: any;
   options?: any;
+}
+
+export type ResultPromise = Promise<any> & {
+  get: () => Promise<any>;
+  getall: () => Promise<any[]>;
+  map: (fn: (item: CssSelector) => any) => Promise<any[]>;
+  each: (fn: (item: CssSelector) => void) => Promise<void>;
 }
 
 export class Response {
@@ -167,17 +100,17 @@ export class Response {
     return data;
   }
 
-  async jq(pattern) {
+  async jq(pattern: string) {
     const data = await this.getData();
     try {
-      return JSON.parse((await JQ.run(pattern, data)) as any);
+      return JSON.parse((await JQ.run(pattern, data, {input: 'json'})) as any);
     } catch(err) {
-      console.error(err, data);
+      console.error(err.stack);
     }
   }
 
-  css(pattern) {
-    const p = this.getData().then(
+  css(pattern: string): ResultPromise {
+    const p: ResultPromise = this.getData().then(
       data => {
         const r = new CssSelector(data, this.options).css(pattern);
         if (r) {
@@ -198,7 +131,7 @@ export class Response {
     return p;
   }
 
-  regex(re, group=0) {
+  regex(re: RegExp, group=0): ResultPromise {
     const p = this.getData().then(data => {
       if (!data) {
         return null;
@@ -215,19 +148,20 @@ export class Response {
     return p;
   }
 
-  links() {
+  links(): ResultPromise {
     const p = this.css('a => @href').then(links => {
       if (!links) {
         return [];
       }
       return links.map(l => this.normalizeLink(l));
     });
-    p.get = () => p.then(_ => _[0]);
-    p.getall = () => p.then(_ => _);
-    return p;
-  }
+    const r = p as ResultPromise;
+    r.get = () => r.then(_ => _[0]);
+    r.getall = () => r.then(_ => _);
+    return r;
+  };
 
-  images(group=0) {
+  images(group=0): ResultPromise  {
     if (group != 0 && group != 1) {
       throw new Error('Invalid group: ' + group);
     }
@@ -239,9 +173,10 @@ export class Response {
         return imgs.map(_ => this.normalizeLink(_)).filter(_ => !!_);
       }
     });
-    p.get = () => p.then(_ => _[0]);
-    p.getall = () => p.then(_ => _);
-    return p;
+    const r = p as ResultPromise;
+    r.get = () => r.then(_ => _[0]);
+    r.getall = () => r.then(_ => _);
+    return r;
   }
 
   pipe(stream) {
