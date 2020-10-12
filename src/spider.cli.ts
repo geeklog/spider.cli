@@ -12,7 +12,6 @@ import { expandURL, parseHeaders, resolveMultipe, resolveURLs, uniqOutput } from
 import Spider from './spider';
 import { Response } from './response';
 import * as SpiderDaemon from './spider.daemon';
-import { Concurrent } from 'concurr';
 
 const batchRunForResponse = async(
   url: string, 
@@ -26,16 +25,15 @@ const batchRunForResponse = async(
   const urls = await resolveURLs(url);
   const options = Object.assign(cli.cmdrOptions(cmdr.program), {stream});
   const output = uniqOutput(options.unique);
-  let jobs: Concurrent;
   const fetch = async (url: string, spider: Spider) => {
     const res = await spider.get(url);
     await handler(url, res, output);
     if (options.follow) {
       const followURL = res.normalizeLink(await res.css(options.follow).get());
-      followURL && jobs.go(() => fetch(url, spider));
+      followURL && spider.jobs.go(() => fetch(url, spider));
     }
   };
-  jobs = Spider.batchRun({ urls, ...options }, fetch);
+  Spider.batchRun({ urls, ...options }, fetch)
 }
 
 const batchRunForSpider = async(
