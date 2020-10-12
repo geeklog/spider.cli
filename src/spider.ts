@@ -129,7 +129,10 @@ export default class Spider {
     }
   }
 
-  async followAll(urlOrCssPatterns, extract) {
+  async followAll(
+    urlOrCssPatterns: string[],
+    onResponse: (res: Response) => Promise<any>
+  ) {
     if (!Array.isArray(urlOrCssPatterns)) {
       throw new Error('urlOrCssPatterns must be an array');
     }
@@ -148,10 +151,10 @@ export default class Spider {
     }
     
     let res = await this.get(startUrl);
-    await extract(res);
+    await onResponse(res);
     while (url = await nextPage(res, patterns)) {
       res = await this.get(url);
-      await extract(res);
+      await onResponse(res);
     }
   }
 
