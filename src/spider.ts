@@ -72,7 +72,7 @@ export default class Spider {
     context.$ = cheerio.load(res.data);
   }
 
-  async save(url: string, filePath: string, options: any) {
+  async save(url: string, filePath: string, options: any = {}) {
     if (!isURL(url)) {
       throw new Error('Malform URL:'+url);
     }
