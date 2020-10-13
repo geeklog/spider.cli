@@ -1,6 +1,7 @@
 import qrpc from 'qrpc';
-import { uniqOutput, expandURL, forEachIter } from './helper';
+import { uniqOutput, expandURL } from './helper';
 import concurrent from 'concurr';
+import { forEachIter } from './types';
 
 export const start = async ({asDaemon, headless}) => {
   if (asDaemon) {
