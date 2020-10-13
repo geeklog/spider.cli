@@ -7,12 +7,12 @@ import cheerio from 'cheerio';
 import crypto from 'crypto';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { collectStream, monitorStream } from './stream';
-import { isURL, concurrently, expandURL } from './helper';
+import { isURL } from './helper';
 import { Response } from './response';
 import Logger from './logger';
 import userAgents from './useragent';
 import ConfigLoader from './config';
-import { Concurrent } from 'concurr';
+import concurrent, { Concurrent } from 'concurr';
 
 export interface SpiderOption {
   cache?: string | boolean;
@@ -23,7 +23,6 @@ export interface SpiderOption {
 }
 
 export interface SpiderBatchRunOption extends SpiderOption {
-  urls?: string | string[];
   parallel?: number;
   unique?: boolean;
   follow?: string;
@@ -33,24 +32,9 @@ export default class Spider {
 
   static batchRun(
     options: SpiderBatchRunOption,
-    action?: (url: string, spider: Spider) => Promise<void>
   ): Spider {
-
-    let urls: string[];
-    if (typeof options.urls === 'string') {
-      urls = expandURL(options.urls);
-    } else {
-      urls = options.urls;
-    }
-    urls = urls || [];
-
     const spider = new Spider({...options});
-    const q = concurrently(options.parallel, urls, async u => {
-      if (action) {
-        await action(u, spider);
-      }
-    });
-    spider.jobs = q;
+    spider.jobs = concurrent(options.parallel, {preserveOrder: true});
     return spider;
   }
 

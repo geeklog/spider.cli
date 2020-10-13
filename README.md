@@ -49,6 +49,24 @@ spider get 'https://news.ycombinator.com/news?p=[1..10]'
 
 >  Note: The range is both side inclusive because it's more intutive.
 
+You can even make infinite requests by Omit the end side
+
+```shell
+spider get 'https://news.ycombinator.com/news?p=[1..]'
+```
+
+You can also specify a step:
+
+```shell
+spider get 'https://news.ycombinator.com/news?p=[1..2..20]'
+```
+
+Can also have step in Infinite requests
+
+```shell
+spider get 'https://news.ycombinator.com/news?p=[1..2..]'
+```
+
 ## Cache
 
 - `-c <cachePath>` Specify a cachePath (or simply `-c`) to enable the cache functionality, if cachePath is not provided, default to the `os.tmpdir() + hierachy(url)`.

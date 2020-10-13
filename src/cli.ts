@@ -30,7 +30,11 @@ export const collectStdin = async function(): Promise<string> {
   });
 }
 
-export const readlinesStdin = async function(onLineCallback: (line: string) => void): Promise<void> {
+export const readlinesStdin = async function(options: {
+  onLine?: (line: string) => void,
+  onError?: (error: Error) => void,
+  onDone?: () => void
+}): Promise<void> {
   return new Promise((resolve, reject) => {
     const rl = readline.createInterface({
       input: process.stdin,
@@ -38,14 +42,49 @@ export const readlinesStdin = async function(onLineCallback: (line: string) => v
       terminal: true
     });
     rl.on('line', (line) => {
-      onLineCallback(line);
+      options.onLine && options.onLine(line);
     });
     rl.on('close', () => {
-      resolve();
+      options.onDone && options.onDone();
     });
     rl.on('error', (error) => {
-      reject(error);
+      options.onError && options.onError(error);
     });
   })
-  
+}
+
+export const iterReadlinesStdin = async function() {
+  let lines: string[] = [];
+  let promises: Array<{ resolve: (a) => void, reject: (e: Error) => void }> = [];
+
+  function next() {
+    if (lines.length) {
+      return Promise.resolve(lines.shift());
+    }
+    return new Promise((resolve, reject) => {
+      promises.push({resolve, reject});
+    });
+  }
+
+  readlinesStdin({
+    onLine(line) {
+      if (promises.length) {
+        promises.shift().resolve({ value: line, done: true });
+      } else {
+        lines.push(line);
+      }
+    },
+    onDone() {
+      while (promises.length) {
+        promises.shift().resolve({ value: null, done: true });
+      }
+    },
+    onError(error) {
+      while (promises.length) {
+        promises.shift().reject(error);
+      }
+    }
+  });
+
+  return { next }
 }

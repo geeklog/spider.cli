@@ -8,10 +8,11 @@ import { spawn } from 'child_process';
 import chalk from 'chalk';
 import cmdr from 'commander';
 import * as cli from './cli';
-import { expandURL, parseHeaders, resolveMultipe, resolveURLs, uniqOutput } from './helper';
+import { expandURL, forEachIter, parseHeaders, uniqOutput } from './helper';
 import Spider from './spider';
 import { Response } from './response';
 import * as SpiderDaemon from './spider.daemon';
+import concurrent from 'concurr';
 
 const batchRunForResponse = async(
   url: string, 
@@ -22,18 +23,22 @@ const batchRunForResponse = async(
     output: (s: any) => void
   ) => Promise<void>
 ) => {
-  const urls = await resolveURLs(url);
-  const options = Object.assign(cli.cmdrOptions(cmdr.program), {stream});
+  const urlsIter = expandURL(url);
+  const options = Object.assign({}, cli.cmdrOptions(cmdr.program), {stream});
   const output = uniqOutput(options.unique);
-  const fetch = async (url: string, spider: Spider) => {
+  const spider = Spider.batchRun(options);
+  const fetch = async (url: string) => {
     const res = await spider.get(url);
     await handler(url, res, output);
     if (options.follow) {
       const followURL = res.normalizeLink(await res.css(options.follow).get());
-      followURL && spider.jobs.go(() => fetch(url, spider));
+      followURL && spider.jobs.go(() => fetch(url));
     }
   };
-  Spider.batchRun({ urls, ...options }, fetch)
+  await forEachIter(urlsIter, async (url: string) => {
+    spider.jobs.go(() => fetch(url));
+    await spider.jobs.idle();
+  });
 }
 
 const batchRunForSpider = async(
@@ -45,11 +50,13 @@ const batchRunForSpider = async(
     output: (s: any) => void
   ) => Promise<void>
 ) => {
-  const urls = await resolveURLs(url);
-  const options = Object.assign(cli.cmdrOptions(cmdr.program), {stream});
+  const urlsIter = expandURL(url);
+  const options = Object.assign({}, cli.cmdrOptions(cmdr.program), {stream});
   const output = uniqOutput(options.unique);
-  Spider.batchRun({ urls, ...options }, async (url: string, spider: Spider) => {
-    await handler(url, spider, output);
+  const spider = Spider.batchRun(options);
+  await forEachIter(urlsIter, async (url: string) => {
+    spider.jobs.go(async () => await handler(url, spider, output));
+    await spider.jobs.idle();
   });
 }
 
@@ -57,7 +64,7 @@ cmdr.version('0.1.0');
 cmdr.option('-c, --cache [cachePath]',
             'use cache, if a cache path is specified, use that, other wise, use a path of (os tmp path + base64(url));')
 cmdr.option('-e, --expire [expireTime]',
-            'default expire time is 1day, if not specified', (value, prev) => prev, 86400000)
+            'default expire time is 1day, if not specified', (value, prev) => value || prev, 86400000)
 cmdr.option('-i, --unique', 'unique')
 cmdr.option('-r, --retry <times>', 'retry times')
 cmdr.option('-d, --parts <n>',
@@ -67,12 +74,15 @@ cmdr.option('-t, --timeout <millsec>', 'set fetch timeout')
 cmdr.option('-x, --headers <headers>', 'custom headers')
 cmdr.option('-u, --user-agent <userAgent>', 'user agent: chrome/firefox/safari')
 cmdr.option('-v, --log [loglevel]',
-            'log messages levels: silent/debug/warn/error', 'debug')
+            'log messages levels: silent/debug/warn/error',
+            (value, prev) => value || prev,
+            'silent')
 cmdr.option('--wait-for', 'wait for document ready (in headless browser)')
 cmdr.option('-D, --unescape', 'decode html entities')
 cmdr.option('-n, --parallel <n>',
             'jobs run sequentially at default, use this options to fetch urls parallely at most <n> jobs',
-            (value, prev) => prev,
+            (value, prev) => value || prev
+            ,
             1)
 cmdr.option('-L, --normalize-links',
             'Normalize links, make the links start with http://www.domain etc')
@@ -98,9 +108,10 @@ cmdr.command('config <getset> <key> [value]')
     }
   });
 cmdr.command('expand <url>').alias('e')
-  .description('Expands url pattern [1..100]')
-  .action(url => {
-    expandURL(url).map(u => console.log(u))
+  .description('Expands url pattern [1..100] | [1..2..100] | [1..] | [1..2..]')
+  .action(async url => {
+    const urlsIter = expandURL(url);
+    await forEachIter(urlsIter, (url) => console.log(url));
   });
 cmdr.command('res.headers [url]')
   .description('show the response headers')
@@ -220,9 +231,15 @@ cmdr.command('daemon <start/stop/status/screenshot/css/> [arg1] [arg2]')
     if (op === 'css') {
       const pattern = arg1;
       const startURL = arg2;
-      resolveMultipe(startURL, cli.cmdrOptions(cmdr), async (url, output) => {
-        (await SpiderDaemon.call('css', {pattern, url}))
-          .map(r => output(r));
+      const options = Object.assign({}, cli.cmdrOptions(cmdr.program));
+      const urlsIter = expandURL(startURL);
+      const output = uniqOutput(options.unique);
+      const q = concurrent(options.parallel, {preserveOrder: true});
+      forEachIter(urlsIter, (url: string) => {
+        q.go(async () => {
+          (await SpiderDaemon.call('css', {pattern, url}))
+            .map(r => output(r));
+        });
       });
       return;
     }

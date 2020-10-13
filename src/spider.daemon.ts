@@ -1,5 +1,6 @@
 import qrpc from 'qrpc';
-import { resolveURLs, uniqOutput, concurrently } from './helper';
+import { uniqOutput, expandURL, forEachIter } from './helper';
+import concurrent from 'concurr';
 
 export const start = async ({asDaemon, headless}) => {
   if (asDaemon) {
@@ -75,10 +76,10 @@ export const call = async (cmd, args = {}): Promise<any> => {
 }
 
 export const runForCSS = async (startUrls, pattern, options, _yield) => {
-  const urls = await resolveURLs(startUrls);
+  const urlsIter = await expandURL(startUrls);
   const output = uniqOutput(options.unique);
-  let q;
-  const fn = async u => {
+  let q = concurrent(options.parallel, {preserveOrder: true});
+  const fetch = async (u: string) => {
     if (!u) {
       return;
     }
@@ -86,10 +87,10 @@ export const runForCSS = async (startUrls, pattern, options, _yield) => {
     await _yield(res, output);
     if (options.follow) {
       const followURL = await res.css(options.follow).get();
-      q.go(fn.bind(null, res.normalizeLink(followURL)));
+      q.go(() => fetch(res.normalizeLink(followURL)));
     }
   }
-  q = concurrently(options.parallel, urls, fn);
+  forEachIter(urlsIter, fetch);
 }
 
 /**
