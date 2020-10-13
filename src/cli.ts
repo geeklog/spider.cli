@@ -1,5 +1,6 @@
 export { progressing, multi_progressing as multiProgressing } from 'cliall/loading';
 import readline from 'readline';
+import { AsyncIterator, IteratorResult, PromiseHandler } from './types';
 
 export const cmdrOptions = (o: any) => {
   const options: any = {};
@@ -53,11 +54,11 @@ export const readlinesStdin = async function(options: {
   })
 }
 
-export const iterReadlinesStdin = (): { next: () => Promise<{value: any, done: boolean}> } => {
+export const iterReadlinesStdin = (): AsyncIterator => {
   let lines: string[] = [];
-  let promises: Array<{ resolve: (a) => void, reject: (e: Error) => void }> = [];
+  let promises: Array<PromiseHandler> = [];
 
-  function next(): Promise<{value: any, done: boolean}> {
+  function next(): Promise<IteratorResult> {
     if (lines.length) {
       return Promise.resolve({value: lines.shift(), done: false});
     }

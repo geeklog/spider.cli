@@ -1,6 +1,6 @@
 {
   "name": "spider.cli",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Spider for Commandline and Programming API",
   "main": "spider.js",
   "bin": {
@@ -45,9 +45,7 @@
     "socks-proxy-agent": "^5.0.0",
     "unfluff": "^3.2.0"
   },
-  "optionalDependencies": {
-    "puppeteer": "^3.0.1"
-  },
+  "optionalDependencies": {},
   "devDependencies": {
     "@types/node": "^14.11.8",
     "eslint": "^6.8.0",

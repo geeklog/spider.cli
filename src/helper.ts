@@ -1,19 +1,12 @@
 import { iterReadlinesStdin } from './cli';
 import { isString } from 'lodash';
 import concurr from 'concurr';
+import {iter2Arrayable, ArrayLikeAsyncIterator} from './types';
 
 export const concurrent = concurr;
 
 export const isURL = function(s: string) {
   return s && isString(s) && (s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:'));
-}
-
-export async function forEachIter(iterator, fn: (val: any) => void | Promise<void>) {
-  let n = await iterator.next();
-  while (!n.done) {
-    await fn(n.value);
-    n = await iterator.next();
-  }
 }
 
 /**
@@ -31,11 +24,9 @@ export async function forEachIter(iterator, fn: (val: any) => void | Promise<voi
  * 
  * @param url 
  */
-export const expandURL = function(url?: string | string[])
-  : { next: () => Promise<{value: any, done: boolean}> | {value: any, done: boolean} }
-{
+export const expandURL = function(url?: string | string[]) : ArrayLikeAsyncIterator {
   if (!url) {
-    return iterReadlinesStdin();
+    return iter2Arrayable(iterReadlinesStdin());
   }
 
   let all: string;
@@ -47,7 +38,7 @@ export const expandURL = function(url?: string | string[])
     start = 0;
     end = url.length - 1;
     let nextIndex = start;
-    return {
+    return iter2Arrayable({
       next() {
         let result: {value: string, done: boolean};
         if (nextIndex <= end) {
@@ -60,17 +51,17 @@ export const expandURL = function(url?: string | string[])
         }
         return { value: url[nextIndex], done: true }
       }
-    };
+    });
   }
 
   let range = url.match(/\[(\d+?)\.\.(\d*?)]/);
   let range2 = url.match(/\[(\d+?)\.\.(\d+?)\.\.(\d*?)]/);
   if (!range && !range2) {
-    return { 
+    return iter2Arrayable({ 
       next() {
         return {value: url, done: true}
       }
-    };
+    });
   }
   
   if (range) {
@@ -88,7 +79,7 @@ export const expandURL = function(url?: string | string[])
   let nextIndex = start;
   let iterationCount = 0;
 
-  return {
+  return iter2Arrayable({
     next() {
       let result: {value: string, done: boolean};
       if (nextIndex <= end) {
@@ -102,7 +93,7 @@ export const expandURL = function(url?: string | string[])
       }
       return { value: url.replace(all, ''+iterationCount), done: true }
     }
-  };
+  });
 }
 
 export const parseURL = function(url: string) {

@@ -8,11 +8,12 @@ import { spawn } from 'child_process';
 import chalk from 'chalk';
 import cmdr from 'commander';
 import * as cli from './cli';
-import { expandURL, forEachIter, parseHeaders, uniqOutput } from './helper';
+import { expandURL, parseHeaders, uniqOutput } from './helper';
 import Spider from './spider';
 import { Response } from './response';
 import * as SpiderDaemon from './spider.daemon';
 import concurrent from 'concurr';
+import { forEachIter } from './types';
 
 const batchRunForResponse = async(
   url: string, 
