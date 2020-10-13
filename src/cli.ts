@@ -53,13 +53,13 @@ export const readlinesStdin = async function(options: {
   })
 }
 
-export const iterReadlinesStdin = async function() {
+export const iterReadlinesStdin = (): { next: () => Promise<{value: any, done: boolean}> } => {
   let lines: string[] = [];
   let promises: Array<{ resolve: (a) => void, reject: (e: Error) => void }> = [];
 
-  function next() {
+  function next(): Promise<{value: any, done: boolean}> {
     if (lines.length) {
-      return Promise.resolve(lines.shift());
+      return Promise.resolve({value: lines.shift(), done: false});
     }
     return new Promise((resolve, reject) => {
       promises.push({resolve, reject});

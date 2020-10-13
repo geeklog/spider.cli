@@ -26,18 +26,18 @@ const batchRunForResponse = async(
   const urlsIter = expandURL(url);
   const options = Object.assign({}, cli.cmdrOptions(cmdr.program), {stream});
   const output = uniqOutput(options.unique);
-  const spider = Spider.batchRun(options);
+  const spider = new Spider({...options});
+  const jobs = concurrent(options.parallel, {preserveOrder: true});
   const fetch = async (url: string) => {
     const res = await spider.get(url);
     await handler(url, res, output);
     if (options.follow) {
       const followURL = res.normalizeLink(await res.css(options.follow).get());
-      followURL && spider.jobs.go(() => fetch(url));
+      followURL && jobs.go(() => fetch(url));
     }
   };
-  await forEachIter(urlsIter, async (url: string) => {
-    spider.jobs.go(() => fetch(url));
-    await spider.jobs.idle();
+  await jobs.forEach(urlsIter, async (url: string) => {
+    await fetch(url);
   });
 }
 
@@ -53,10 +53,10 @@ const batchRunForSpider = async(
   const urlsIter = expandURL(url);
   const options = Object.assign({}, cli.cmdrOptions(cmdr.program), {stream});
   const output = uniqOutput(options.unique);
-  const spider = Spider.batchRun(options);
-  await forEachIter(urlsIter, async (url: string) => {
-    spider.jobs.go(async () => await handler(url, spider, output));
-    await spider.jobs.idle();
+  const spider = new Spider({...options});
+  const jobs = concurrent(options.parallel, {preserveOrder: true});
+  jobs.forEach(urlsIter, async (url: string) => {
+    await handler(url, spider, output);
   });
 }
 
@@ -150,7 +150,7 @@ cmdr.command('save <path> [url]')
 cmdr.command('css <selector> [url]').alias('ext')
   .description('Apply css selector to extract content from html')
   .action(async (selector, urlPattern) => {
-    batchRunForResponse(urlPattern, {}, async (url, res, output) => {
+    batchRunForResponse(urlPattern, cmdr.options, async (url, res, output) => {
       const ss = await res.css(selector).getall();
       ss.map(output);
     });
@@ -158,14 +158,14 @@ cmdr.command('css <selector> [url]').alias('ext')
 cmdr.command('regex <re> [url]').alias('re')
   .description('Match RegExp from webpage')
   .action(async (re, urlPattern) => {
-    batchRunForResponse(urlPattern, {}, async (url, res, output) => {
+    batchRunForResponse(urlPattern, cmdr.options, async (url, res, output) => {
       (await res.regex(re).getall()).map(output);
     });
   });
 cmdr.command('link [url]').alias('l')
   .description('Extract links from webpage')
   .action(async urlPattern => {
-    batchRunForResponse(urlPattern, {}, async (url, res, output) => {
+    batchRunForResponse(urlPattern, cmdr.options, async (url, res, output) => {
       for (const link of await res.links().getall()) {
         output(link);
       }
@@ -247,3 +247,4 @@ cmdr.command('daemon <start/stop/status/screenshot/css/> [arg1] [arg2]')
   });
 cmdr.parse(process.argv);
 cmdr.headers = parseHeaders(cmdr.headers);
+cmdr.options = cli.cmdrOptions(cmdr);

@@ -31,7 +31,9 @@ export async function forEachIter(iterator, fn: (val: any) => void | Promise<voi
  * 
  * @param url 
  */
-export const expandURL = function(url?: string | string[]) {
+export const expandURL = function(url?: string | string[])
+  : { next: () => Promise<{value: any, done: boolean}> | {value: any, done: boolean} }
+{
   if (!url) {
     return iterReadlinesStdin();
   }
@@ -151,18 +153,6 @@ export const removeAllTags = function(tag, html) {
     .replace(new RegExp(`<${tag}[\\s\\S]+?/>`, 'g'), '')
     .replace(new RegExp(`<${tag}[\\s\\S]+?>`, 'g'), '')
 }
-
-export const concurrently = (
-  n: number,
-  vals: any[] = [],
-  fn: (item: any) => Promise<any> = (item: any) => undefined
-) => {
-  const q = concurrent(n, {preserveOrder: true});
-  for (const v of vals) {
-    q.go(fn.bind(null, v));
-  }
-  return q;
-};
 
 export const uniqOutput = (b) => {
   const a = new Set();

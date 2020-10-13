@@ -30,18 +30,9 @@ export interface SpiderBatchRunOption extends SpiderOption {
 
 export default class Spider {
 
-  static batchRun(
-    options: SpiderBatchRunOption,
-  ): Spider {
-    const spider = new Spider({...options});
-    spider.jobs = concurrent(options.parallel, {preserveOrder: true});
-    return spider;
-  }
-
   options: any;
   cfg: ConfigLoader;
   logger: Logger;
-  jobs: Concurrent;
 
   constructor(options: any = {}) {
     this.options = options;
