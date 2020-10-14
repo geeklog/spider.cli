@@ -116,8 +116,8 @@ CSS selector followed by a `=>`, followed by a extract pattern:
 - `%html` means the outer html.
 - `@attr` starts with `@` means extract the attribute.
 - `trim` trim the text, prev item must be a string.
-- `head(n)` take the first n chars of the text, prev item must be a string. // THIS FEATURE NOT IMPLEMENTED YET
-- `tail(n)` take the last n chars of the text, prev item must be a string. // THIS FEATURE NOT IMPLEMENTED YET
+- `head(n)` take the first n chars of the text, prev item must be a string.
+- `tail(n)` take the last n chars of the text, prev item must be a string.
 
 ```shell
 spider css '#hnmain tr.athing td.title a => %text : @href' 'https://news.ycombinator.com/news?p=[1..5]'

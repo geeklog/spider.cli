@@ -35,17 +35,31 @@ export class CssSelector {
       for (const formatter of formatters) {
         if (formatter === 'trim') {
           res = res.trim();
-        } else if (formatter === 'trimLines') {
-          res = res.split('\n').map(line => line.trim()).filter(line => !!line).join('\n');
-        } else {
-          res = format(formatter, {
-            '@([a-z|A-Z|0-9|\\-|_]+)': (_, s) => this.unescapeOrNot(el.attr(s)) || '',
-            '%html': () => this.unescapeOrNot(this.prettyHTMLOrNot($.html(el))),
-            '%text': () => this.unescapeOrNot(el.text()),
-            '%el': () => el[0],
-            '%json': () => el[0].children.map(_ => this.prettyJSONOrNot(_.data)).join('\n')
-          });
+          continue;
         }
+        if (formatter === 'trimLines') {
+          res = res.split('\n').map(line => line.trim()).filter(line => !!line).join('\n');
+          continue;
+        }
+        let matched;
+        matched = formatter.match(/^head\((\d+)\)$/);
+        if (matched) {
+          res = res.substr(0, Number(matched[1]));
+          continue;
+        }
+        matched = formatter.match(/^tail\((\d+)\)$/);
+        if (matched) {
+          res = res.substring(res.length - Number(matched[1]), res.length);
+          continue;
+        }
+
+        res = format(formatter, {
+          '@([a-z|A-Z|0-9|\\-|_]+)': (_, s) => this.unescapeOrNot(el.attr(s)) || '',
+          '%html': () => this.unescapeOrNot(this.prettyHTMLOrNot($.html(el))),
+          '%text': () => this.unescapeOrNot(el.text()),
+          '%el': () => el[0],
+          '%json': () => el[0].children.map(_ => this.prettyJSONOrNot(_.data)).join('\n')
+        });
       }
       return res;
     }
