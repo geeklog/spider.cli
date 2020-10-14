@@ -8,11 +8,10 @@ import crypto from 'crypto';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { collectStream, monitorStream } from './stream';
 import { isURL } from './helper';
-import { Response } from './response';
+import { SpiderResponse } from './response';
 import Logger from './logger';
 import userAgents from './useragent';
 import ConfigLoader from './config';
-import concurrent, { Concurrent } from 'concurr';
 
 export interface SpiderOption {
   cache?: string | boolean;
@@ -106,7 +105,7 @@ export default class Spider {
 
   async followAll(
     urlOrCssPatterns: string[],
-    onResponse: (res: Response) => Promise<any>
+    onResponse: (res: SpiderResponse) => Promise<any>
   ) {
     if (!Array.isArray(urlOrCssPatterns)) {
       throw new Error('urlOrCssPatterns must be an array');
@@ -164,7 +163,7 @@ export default class Spider {
     cacheExpire = cacheExpire || 0;
 
     if (!useCache) {
-      return new Response({
+      return new SpiderResponse({
         url,
         res: await this.axiosGetWithOptions(url, options),
         options
@@ -196,24 +195,24 @@ export default class Spider {
     if (streamMode && !cacheExist) {
       const res = await this.axiosGetWithOptions(url, options);
       if (!res) {
-        return new Response({ url, res: null, options });
+        return new SpiderResponse({ url, res: null, options });
       }
 
       await fs.ensureFile(cachePath);
       res.data.pipe(fs.createWriteStream(cachePath));
 
-      return new Response({ url, res, options });
+      return new SpiderResponse({ url, res, options });
     }
 
     if (streamMode && cacheExist) {
       const stream = fs.createReadStream(cachePath);
-      return new Response({ url, data: stream, options});
+      return new SpiderResponse({ url, data: stream, options});
     }
 
     if (!streamMode && !cacheExist) {
       const res = await this.axiosGetWithOptions(url, options);
       if (!res) {
-        return new Response({ url, res, options });
+        return new SpiderResponse({ url, res, options });
       }
       await fs.ensureFile(cachePath);
       await fs.writeFile(
@@ -222,12 +221,12 @@ export default class Spider {
           ? res.data
           : JSON.stringify(res.data)
       );
-      return new Response({ url, res, options});
+      return new SpiderResponse({ url, res, options});
     }
 
     if (!streamMode && cacheExist) {
       const data = (await fs.readFile(cachePath)).toString();
-      return new Response({ url, data, options});
+      return new SpiderResponse({ url, data, options});
     }
     
   }

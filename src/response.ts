@@ -20,14 +20,15 @@ export type ResultPromise = Promise<any> & {
   each: (fn: (item: CssSelector) => void) => Promise<void>;
 }
 
-export class Response {
-  url: any;
-  domain: any;
+export class SpiderResponse {
+
+  url: string;
+  domain: string;
   res: any;
   data: any;
   headers: any;
   options: any;
-  code: any;
+  code: number;
 
   constructor({url, data, res, options}: ResponseConfig) {
     this.url = url;
@@ -39,7 +40,7 @@ export class Response {
     this.code = res ? res.code : (data ? 200 : 404);
   }
 
-  normalizeLink(link) {
+  normalizeLink(link: string) {
     return normalizeLink(this.url, link);
   }
 

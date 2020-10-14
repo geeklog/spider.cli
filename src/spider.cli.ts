@@ -10,7 +10,7 @@ import cmdr from 'commander';
 import * as cli from './cli';
 import { expandURL, parseHeaders, uniqOutput } from './helper';
 import Spider from './spider';
-import { Response } from './response';
+import { SpiderResponse } from './response';
 import * as SpiderDaemon from './spider.daemon';
 import concurrent from 'concurr';
 import { forEachIter } from './types';
@@ -20,7 +20,7 @@ const batchRunForResponse = async(
   {stream}: { stream?: boolean},
   handler: (
     url: string,
-    res: Response,
+    res: SpiderResponse,
     output: (s: any) => void
   ) => Promise<void>
 ) => {
