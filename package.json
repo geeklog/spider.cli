@@ -1,11 +1,14 @@
 {
   "name": "spider.cli",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Spider for Commandline and Programming API",
   "main": "spider.js",
   "bin": {
     "spider": "spider.cli.js"
   },
+  "repository": "https://github.com/geeklog/spider.cli",
+  "author": "Wateriy",
+  "license": "MIT",
   "scripts": {
     "pub-dev": "tsc -d && pushd . && cp package.json dist && cp README.md dist && cd dist && npm link || popd",
     "pub": "tsc -d && pushd . && cp package.json dist && cp README.md dist && cd dist && npm publish || popd",
@@ -20,8 +23,6 @@
     "javascript",
     "typescript"
   ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "await-sleep": "0.0.1",
     "axios": "^0.19.2",

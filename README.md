@@ -1,5 +1,9 @@
 # Spider for Commandline and Programming API
 
+This is a spider for command line.
+
+This package is open source now, if you found any problems, welcome to open issues on [Github](https://github.com/geeklog/spider.cli). Stars would be appreciated.;
+
 ## Installation
 
 ### Build from local
@@ -29,9 +33,7 @@ spider get https://www.example.com
 ## Request Options
 
 - `-p` Prettify the html.
-
 - `-t <timeout>` Specify the timeout of request (in milliseconds).
-
 - `-r <retryTimes>` Specify retry times.
 - `-x <headers>` Custom request headers `k:v\nk:v`
 ```shell
