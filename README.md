@@ -2,7 +2,7 @@
 
 This is a spider for command line.
 
-This package is open source now, if you found any problems, welcome to open issues on [Github](https://github.com/geeklog/spider.cli). Stars would be appreciated.;
+This package is open source now, if you found any problems, welcome to open issues on [Github](https://github.com/geeklog/spider.cli). Stars would be appreciated.
 
 ## Installation
 
