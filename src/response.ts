@@ -104,7 +104,7 @@ export class SpiderResponse {
   async jq(pattern: string) {
     const data = await this.getData();
     try {
-      return JSON.parse((await JQ.run(pattern, data, {input: 'json'})) as any);
+      return await JQ.run(pattern, data, {input: 'json'});
     } catch(err) {
       console.error(err.stack);
     }
