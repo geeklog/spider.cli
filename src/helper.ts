@@ -1,9 +1,6 @@
 import { iterReadlinesStdin } from './cli';
 import { isString } from 'lodash';
-import concurr from 'concurr';
 import {iter2Arrayable, ArrayLikeAsyncIterator} from './types';
-
-export const concurrent = concurr;
 
 export const isURL = function(s: string) {
   return s && isString(s) && (s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:'));

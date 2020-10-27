@@ -1,6 +1,6 @@
 import qrpc from 'qrpc';
 import { uniqOutput, expandURL } from './helper';
-import concurrent from 'concurr';
+import { concurrent } from 'conflow';
 import { forEachIter } from './types';
 
 export const start = async ({asDaemon, headless}) => {

@@ -12,7 +12,7 @@ import { expandURL, parseHeaders, uniqOutput } from './helper';
 import Spider from './spider';
 import { SpiderResponse } from './response';
 import * as SpiderDaemon from './spider.daemon';
-import concurrent from 'concurr';
+import { concurrent } from 'conflow';
 import { forEachIter } from './types';
 
 const batchRunForResponse = async(

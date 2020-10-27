@@ -32,7 +32,7 @@
     "cliall": "^0.2.0",
     "clui": "^0.3.6",
     "commander": "^6.1.0",
-    "concurr": "^1.4.3",
+    "conflow": "^1.1.2",
     "daemon": "^1.1.0",
     "entities": "^2.0.2",
     "fs-extra": "^9.0.0",

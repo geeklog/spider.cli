@@ -58,9 +58,6 @@ export default class Spider {
       throw new Error('Malform URL:'+url);
     }
     options = Object.assign({}, this.options, {stream: true, cache: false}, options);
-    // TODO
-    // 1. 断点续传
-    // 2. 多片段下载时, 使用文件缓存而不是内存缓存
     if (options.parts) {
       const buf = await this.multipartDownload(url, Number(options.parts), options);
       await fs.ensureFile(filePath);
