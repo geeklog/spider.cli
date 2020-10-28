@@ -2,6 +2,16 @@ import { iterReadlinesStdin } from './cli';
 import { isString } from 'lodash';
 import {iter2Arrayable, ArrayLikeAsyncIterator} from './types';
 
+export const getPath = (desc: string): string => {
+  if (desc === 'userData') {
+    return process.env.APPDATA ||
+      (process.platform == 'darwin' ?
+        process.env.HOME + '/Library/Application Support' :
+        process.env.HOME + "/.local/share");
+  }
+  throw new Error('Path not supported: '+desc);
+}
+
 export const isURL = function(s: string) {
   return s && isString(s) && (s.startsWith('http:') || s.startsWith('https:') || s.startsWith('ftp:'));
 }

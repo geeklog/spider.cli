@@ -1,5 +1,6 @@
 import pretty from 'pretty';
 import cheerio from 'cheerio';
+import mime from 'mime-types';
 import * as entities from 'entities';
 import * as JQ from 'node-jq';
 import { collectStream, isStream } from './stream';
@@ -11,6 +12,7 @@ export type ResponseConfig = {
   data?: any;
   res?: any;
   options?: any;
+  cachePath?: string;
 }
 
 export type ResultPromise = Promise<any> & {
@@ -29,8 +31,9 @@ export class SpiderResponse {
   headers: any;
   options: any;
   code: number;
+  cachePath: string;
 
-  constructor({url, data, res, options}: ResponseConfig) {
+  constructor({url, data, res, options, cachePath}: ResponseConfig) {
     this.url = url;
     this.domain = parseURL(url).domain;
     this.res = res;
@@ -38,10 +41,19 @@ export class SpiderResponse {
     this.headers = res ? res.headers: null;
     this.options = options;
     this.code = res ? res.code : (data ? 200 : 404);
+    this.cachePath = cachePath;
   }
 
   normalizeLink(link: string) {
     return normalizeLink(this.url, link);
+  }
+
+  async extension() {
+    if (this.cachePath) {
+      return this.cachePath.split('/').pop().split('?').shift().split('.').pop();
+    } else {
+      return mime.extension(this.headers['content-type']);
+    }
   }
 
   async getData() {

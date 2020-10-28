@@ -2,7 +2,7 @@
 
 This is a spider for command line.
 
-This package is open source now, if you found any problems, welcome to open issues on [Github](https://github.com/geeklog/spider.cli). Stars would be appreciated.
+If you found any problems, welcome to open issues on [Github](https://github.com/geeklog/spider.cli). Stars would be appreciated.
 
 ## Installation
 
@@ -71,8 +71,13 @@ spider get 'https://news.ycombinator.com/news?p=[1..2..]'
 
 ## Cache
 
-- `-c <cachePath>` Specify a cachePath (or simply `-c`) to enable the cache functionality, if cachePath is not provided, default to the `os.tmpdir() + hierachy(url)`.
-> Note: When using cache with `spider save`, `spdier.cli` can detect if the file is saved and avoid redownload. if the file is an image, it can detect whether the image is corrupted and make a redownload. // THIS FEATURE NOT IMPLEMENTED YET
+- `-c <cachePath>` Specify a cachePath (or simply `-c`) to enable the cache functionality, if cachePath is not provided, default to the `APP_DATA_PATH + hierachy(url)`.
+
+The `APP_DATA_PATH` is located on one of these path depend on your OS:
+  - OS X - '/Users/user/Library/Application Support'
+  - Windows 8 - 'C:\Users\user\AppData\Roaming'
+  - Windows XP - 'C:\Documents and Settings\user\Application Data'
+  - Linux - '/home/user/.local/share'
 
 - `-e <expireTime>` Specify the cache expire time in seconds, default is 1 day , which is 864000 second.
 
@@ -128,13 +133,13 @@ spider css '#hnmain tr.athing td.title a => %text : @href' 'https://news.ycombin
 You can also omit the extract pattern.
 
 ```shell
-spider css '#hnmain tr.athing td.title a' 'https://...'
+spider css '#hnmain tr.athing td.title a' 'https://news.ycombinator.com/news'
 ```
 
 It's the same as:
 
 ```shell
-spider css '#hnmain tr.athing td.title a => %html' 'https://...'
+spider css '#hnmain tr.athing td.title a => %html' 'https://news.ycombinator.com/news'
 ```
 
 Omitting the selector part means select the element itself, only use in subselection.

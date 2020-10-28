@@ -1,13 +1,12 @@
 import fs from 'fs-extra';
 import axios, {ResponseType} from 'axios';
 import path from 'path';
-import os from 'os';
 import { isString, merge } from 'lodash';
 import cheerio from 'cheerio';
 import crypto from 'crypto';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { collectStream, monitorStream } from './stream';
-import { isURL } from './helper';
+import { getPath, isURL } from './helper';
 import { SpiderResponse } from './response';
 import Logger from './logger';
 import userAgents from './useragent';
@@ -18,6 +17,7 @@ export interface SpiderOption {
   stream?: boolean;
   expire?: number;
   retry?: number;
+  log?: 'debug' | 'warn' | 'error' | 'none'
   headers?: {[index: string]: string}
 }
 
@@ -29,11 +29,11 @@ export interface SpiderBatchRunOption extends SpiderOption {
 
 export default class Spider {
 
-  options: any;
+  options: SpiderOption;
   cfg: ConfigLoader;
   logger: Logger;
 
-  constructor(options: any = {}) {
+  constructor(options: SpiderOption = {}) {
     this.options = options;
     this.cfg = new ConfigLoader('~/.spider.cli.json');
     this.logger = new Logger(options.log);
@@ -157,7 +157,9 @@ export default class Spider {
       expire: cacheExpire
     } = options;
 
-    cacheExpire = cacheExpire || 0;
+    if (cacheExpire === undefined) {
+      cacheExpire = 86400
+    }
 
     if (!useCache) {
       return new SpiderResponse({
@@ -169,7 +171,7 @@ export default class Spider {
   
     const cachePath = isString(useCache)
       ? path.join(useCache as string, this.toFilePath(url))
-      : path.join(os.tmpdir(), this.toFilePath(url));
+      : path.join(getPath('userData'), 'spider.cli/cache', this.toFilePath(url));
     
     let cacheExist = await fs.pathExists(cachePath);
     
@@ -203,7 +205,7 @@ export default class Spider {
 
     if (streamMode && cacheExist) {
       const stream = fs.createReadStream(cachePath);
-      return new SpiderResponse({ url, data: stream, options});
+      return new SpiderResponse({ url, data: stream, options, cachePath});
     }
 
     if (!streamMode && !cacheExist) {
@@ -223,7 +225,7 @@ export default class Spider {
 
     if (!streamMode && cacheExist) {
       const data = (await fs.readFile(cachePath)).toString();
-      return new SpiderResponse({ url, data, options});
+      return new SpiderResponse({ url, data, options, cachePath});
     }
     
   }
