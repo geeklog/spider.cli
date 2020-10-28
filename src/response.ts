@@ -48,7 +48,7 @@ export class SpiderResponse {
     return normalizeLink(this.url, link);
   }
 
-  async extension() {
+  extension(): string {
     if (this.cachePath) {
       return this.cachePath.split('/').pop().split('?').shift().split('.').pop();
     } else {
